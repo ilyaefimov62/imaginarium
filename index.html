@@ -833,6 +833,7 @@
 
   const CARD_DECKS = [
     makeImageDeck('baza', 'База', 'baza', 98),
+    makeImageDeck('new_year', 'New Year', 'new_year', 6),
     makeImageDeck('detstvo', 'Детство', 'detstvo', 98),
     makeImageDeck('x', 'X', 'x', 100),
     // Новые колоды будут добавляться сюда так же — одной строкой через makeImageDeck(...)
@@ -2164,7 +2165,7 @@
       mammothPosition:0, commonSlonPosition:0,
       activePlayerId:null, pawnAnim:{}, pawnAnimLock:{},
       animCommon:{from:0,to:0,progress:1}, animMammoth:{from:0,to:0,progress:1},
-      deck: shuffle(buildPoolFromDecks(['baza','detstvo','x'], new Set())), discard:[], lastResult:null,
+      deck: shuffle(buildPoolFromDecks(['baza','new_year','detstvo','x'], new Set())), discard:[], lastResult:null,
       showField:false, fieldTimer:null,
     };
     qrBlock.style.display = 'none';

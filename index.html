@@ -2030,7 +2030,7 @@
     const idx = G.players.length;
     const botId = 'bot_' + Date.now() + '_' + idx;
     const color = COLORS[idx % COLORS.length];
-    const bot = { id:botId, name:'Бот ' + (idx), score:0, cards:[], position:0, color };
+    const bot = { id:botId, name:'Бот ' + (idx), score:0, cards:[], position:0, color, avatar:'🤖' };
     G.players.push(bot);
     G.botPlayers.push(botId);
     // Карты раздавать здесь не нужно (и вредно): колода на этот момент может

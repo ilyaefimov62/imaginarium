@@ -742,6 +742,7 @@
         <button class="btn btn-secondary" id="deckLobbyCloseBtn">Закрыть</button>
         <button class="btn btn-secondary hidden" id="deckLobbyCancelBtn">Отмена</button>
         <button class="btn btn-success hidden" id="deckLobbyStartBtn">🎮 Начать игру</button>
+        <button class="btn btn-success hidden" id="deckLobbyApplyBtn">Применить и продолжить</button>
       </div>
     </div>
   </div>
@@ -2786,26 +2787,10 @@
     const switchDeckBtn = document.getElementById('switchDeckBtn');
     if (switchDeckBtn) switchDeckBtn.addEventListener('click', () => {
       if (!G.isRoomHost) return;
-      G.deckSwitchPickerOpen = true;
-      renderGame();
+      openDeckPickerForSwitch();
     });
-    const deckSwitchCancelBtn = document.getElementById('deckSwitchCancelBtn');
-    if (deckSwitchCancelBtn) deckSwitchCancelBtn.addEventListener('click', () => {
-      if (!G.isRoomHost) return;
-      G.deckSwitchPickerOpen = false;
-      renderGame();
-    });
-    const deckSwitchConfirmBtn = document.getElementById('deckSwitchConfirmBtn');
-    if (deckSwitchConfirmBtn) deckSwitchConfirmBtn.addEventListener('click', () => { if (G.isRoomHost) resolveDeckDecision('switch'); });
     const finishGameFromDeckBtn = document.getElementById('finishGameFromDeckBtn');
     if (finishGameFromDeckBtn) finishGameFromDeckBtn.addEventListener('click', () => { if (G.isRoomHost) finishGameFromDeckDecision(); });
-    const deckSwitchCheckboxes = document.getElementById('deckSwitchCheckboxes');
-    if (deckSwitchCheckboxes){
-      renderDeckCheckboxesInto(deckSwitchCheckboxes, G.selectedDeckIds, (ids) => {
-        G.selectedDeckIds = ids;
-        renderGame();
-      });
-    }
   }
 
   // ====== ПОКАЗ ПОЛЯ (без автотаймера, синхронизируется всем игрокам) ======
@@ -2841,15 +2826,6 @@
     if (!G.isRoomHost){
       return `<div class="announce small">Колода закончилась, ожидайте решение хоста</div>`;
     }
-    if (G.deckSwitchPickerOpen){
-      let html = `<div class="announce small">Выберите колоды для продолжения</div>`;
-      html += `<div class="deck-picker" id="deckSwitchCheckboxes"></div>`;
-      html += `<div class="stack-btns">
-        <button class="btn btn-success" id="deckSwitchConfirmBtn">Применить и продолжить</button>
-        <button class="btn btn-secondary" id="deckSwitchCancelBtn">Отмена</button>
-      </div>`;
-      return html;
-    }
     let html = `<div class="announce small">Колода закончилась, выберите действие:</div>`;
     html += `<div class="stack-btns">`;
     if (canContinue) html += `<button class="btn btn-success" id="continueDeckBtn">Продолжить этим набором</button>`;
@@ -2857,31 +2833,6 @@
     html += `<button class="btn btn-danger" id="finishGameFromDeckBtn">Закончить игру</button>`;
     html += `</div>`;
     return html;
-  }
-
-  function renderDeckCheckboxesInto(container, selectedIds, onToggle){
-    if (!container) return;
-    container.innerHTML = CARD_DECKS.map(d => {
-      const checked = selectedIds.includes(d.id);
-      return `<label class="deck-option ${checked?'checked':''}">
-        <input type="checkbox" data-deck="${d.id}" ${checked?'checked':''}>
-        ${d.cover ? `<img class="deck-thumb" src="${d.cover}" alt="">` : ''}
-        <span class="deck-name">${escapeHtml(d.name)}</span>
-        <span class="deck-count">${d.cards.length} карт</span>
-      </label>`;
-    }).join('');
-    container.querySelectorAll('[data-deck]').forEach(el => {
-      el.addEventListener('change', () => {
-        const id = el.getAttribute('data-deck');
-        let next = selectedIds.slice();
-        if (el.checked){ if (!next.includes(id)) next.push(id); }
-        else {
-          if (next.length <= 1){ el.checked = true; toast('Должна остаться выбрана хотя бы одна колода', 'warn'); return; }
-          next = next.filter(x => x !== id);
-        }
-        onToggle(next);
-      });
-    });
   }
 
   // ===================================================================
@@ -2929,7 +2880,8 @@
     });
   }
 
-  let deckPickerMode = 'browse'; // 'browse' — обзор из лобби, 'start' — выбор перед стартом игры
+  let deckPickerMode = 'browse'; // 'browse' — обзор из лобби, 'start' — выбор перед стартом игры, 'switch' — смена набора при нехватке карт посреди игры
+  let deckSwitchSnapshotIds = null; // выбор колод на момент открытия попапа смены — чтобы вернуть его при отмене
 
   function openDeckLobbyBrowser(){
     deckPickerMode = 'browse';
@@ -2947,11 +2899,21 @@
     updateDeckLobbyFooter();
     document.getElementById('deckLobbyOverlay').classList.remove('hidden');
   }
+  function openDeckPickerForSwitch(){
+    deckPickerMode = 'switch';
+    deckSwitchSnapshotIds = (G.selectedDeckIds || []).slice();
+    document.getElementById('deckLobbyTitle').textContent = 'Выберите колоды для продолжения';
+    renderDeckLobbyGrid();
+    updateDeckLobbyFooter();
+    document.getElementById('deckLobbyOverlay').classList.remove('hidden');
+  }
   function updateDeckLobbyFooter(){
     const isStart = deckPickerMode === 'start';
-    document.getElementById('deckLobbyCloseBtn').classList.toggle('hidden', isStart);
-    document.getElementById('deckLobbyCancelBtn').classList.toggle('hidden', !isStart);
+    const isSwitch = deckPickerMode === 'switch';
+    document.getElementById('deckLobbyCloseBtn').classList.toggle('hidden', isStart || isSwitch);
+    document.getElementById('deckLobbyCancelBtn').classList.toggle('hidden', !(isStart || isSwitch));
     document.getElementById('deckLobbyStartBtn').classList.toggle('hidden', !isStart);
+    document.getElementById('deckLobbyApplyBtn').classList.toggle('hidden', !isSwitch);
   }
   function closeDeckLobbyBrowser(){
     document.getElementById('deckLobbyOverlay').classList.add('hidden');
@@ -3637,8 +3599,25 @@
     }
   });
 
-  document.getElementById('deckLobbyCancelBtn').addEventListener('click', closeDeckLobbyBrowser);
+  document.getElementById('deckLobbyCancelBtn').addEventListener('click', () => {
+    if (deckPickerMode === 'switch' && deckSwitchSnapshotIds){
+      // Отмена смены набора — возвращаем выбор колод, каким он был до открытия попапа.
+      G.selectedDeckIds = deckSwitchSnapshotIds.slice();
+    }
+    deckSwitchSnapshotIds = null;
+    closeDeckLobbyBrowser();
+    if (G.awaitingDeckDecision) renderGame();
+  });
   document.getElementById('deckLobbyStartBtn').addEventListener('click', actuallyStartGame);
+  document.getElementById('deckLobbyApplyBtn').addEventListener('click', () => {
+    resolveDeckDecision('switch');
+    // Попап закрываем только если решение реально применилось (карт хватило) —
+    // при нехватке карт resolveDeckDecision покажет тост и оставит попап открытым.
+    if (!G.awaitingDeckDecision){
+      deckSwitchSnapshotIds = null;
+      closeDeckLobbyBrowser();
+    }
+  });
 
 
   document.getElementById('leaveRoomBtn').addEventListener('click', () => {

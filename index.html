@@ -1,0 +1,3729 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>🧙 Имаджинариум</title>
+  <style>
+    :root {
+      --bg: #12121f;
+      --panel: #181830;
+      --panel-2: #0f0f22;
+      --panel-3: #1e1e3a;
+      --accent: #f5c842;
+      --accent-2: #ffe08a;
+      --accent-soft: rgba(245,200,66,.16);
+      --good: #2ecc71;
+      --bad: #e74c3c;
+      --info: #5aa9ff;
+      --host: #8e6cff;
+      --text: #eef0ff;
+      --text-dim: #9aa0c0;
+      --border: #2b2b52;
+      --radius-lg: 24px;
+      --radius-md: 16px;
+      --radius-sm: 12px;
+      --shadow: 0 16px 48px rgba(0,0,0,.6);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      /* Защита от случайного pull-to-refresh на мобильных браузерах:
+         резкий свайп у верхнего/нижнего края экрана раньше перезагружал
+         страницу и выкидывал игрока из комнаты. */
+      overscroll-behavior-y: none;
+    }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: radial-gradient(circle at 20% -10%, #21214a 0%, var(--bg) 55%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      overscroll-behavior-y: none;
+    }
+    #app {
+      max-width: 600px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+      background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      padding: 32px 28px;
+      width: 100%;
+      animation: fadeUp .3s ease;
+    }
+    .screen.active { display: flex; }
+
+    @keyframes fadeUp {
+      0% { opacity: 0; transform: translateY(16px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    .big-title {
+      font-size: 2.4rem;
+      font-weight: 700;
+      text-align: center;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+    .big-sub {
+      font-size: 1.5rem;
+      font-weight: 500;
+      text-align: center;
+      color: var(--text-dim);
+      margin-bottom: 12px;
+    }
+
+    .input-big {
+      width: 100%;
+      padding: 18px 24px;
+      border-radius: 60px;
+      border: 2px solid var(--border);
+      background: var(--panel-3);
+      color: #fff;
+      font-size: 1.4rem;
+      font-weight: 500;
+      outline: none;
+      transition: .2s;
+      text-align: center;
+    }
+    .input-big:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px var(--accent-soft);
+    }
+
+    .btn {
+      background: linear-gradient(180deg, var(--accent-2), var(--accent));
+      color: #241b04;
+      border: none;
+      padding: 14px 24px;
+      border-radius: 60px;
+      font-size: 1.12rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: .15s ease;
+      box-shadow: 0 6px 20px rgba(245,200,66,.3);
+      width: 100%;
+      text-align: center;
+      letter-spacing: 0.02em;
+      line-height: 1.25;
+    }
+    .btn:hover { transform: scale(1.02); filter: brightness(1.05); }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { opacity: .4; pointer-events: none; }
+    .btn-secondary {
+      background: #2a2a4e;
+      color: var(--text);
+      box-shadow: none;
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { background: #33335f; }
+    .btn-success {
+      background: linear-gradient(180deg, #4ee08d, var(--good));
+      color: #06210f;
+    }
+    .btn-danger {
+      background: linear-gradient(180deg, #f0685a, var(--bad));
+      color: #2a0805;
+    }
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-dim);
+      border: 2px dashed var(--border);
+      box-shadow: none;
+    }
+    .btn-sm { padding: 12px 20px; font-size: 1rem; }
+    .btn-block { width: 100%; }
+
+    .row {
+      display: flex;
+      gap: 12px;
+      width: 100%;
+      flex-wrap: wrap;
+    }
+    .row .btn { flex: 1; min-width: 140px; }
+
+    .picker-grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+      margin: 8px 0;
+    }
+    .icon-option {
+      width: 64px;
+      height: 64px;
+      border-radius: 16px;
+      background: var(--panel-3);
+      border: 4px solid transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.2rem;
+      cursor: pointer;
+      transition: .15s;
+      box-shadow: 0 4px 12px rgba(0,0,0,.3);
+    }
+    .icon-option:hover { transform: scale(1.08); border-color: #454578; }
+    .icon-option.selected {
+      border-color: var(--accent);
+      background: #2c2c58;
+      box-shadow: 0 0 20px rgba(245,200,66,.4);
+      transform: scale(1.05);
+    }
+
+    .color-option {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 4px solid transparent;
+      transition: .15s;
+      box-shadow: 0 4px 12px rgba(0,0,0,.35);
+    }
+    .color-option:hover { transform: scale(1.14); }
+    .color-option.selected {
+      border-color: #fff;
+      box-shadow: 0 0 0 4px var(--accent);
+      transform: scale(1.1);
+    }
+
+    .room-code {
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: var(--accent);
+      background: var(--panel-3);
+      padding: 8px 24px;
+      border-radius: 60px;
+      border: 2px solid var(--border);
+      letter-spacing: 0.1em;
+    }
+    .qr-container {
+      background: #fff;
+      padding: 12px;
+      border-radius: 20px;
+      line-height: 0;
+      box-shadow: 0 8px 24px rgba(0,0,0,.4);
+    }
+    .players-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      width: 100%;
+      margin: 8px 0;
+    }
+    .player-tag {
+      background: var(--panel-3);
+      padding: 8px 16px 8px 20px;
+      border-radius: 60px;
+      font-size: 1.1rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-left: 4px solid #666;
+    }
+    .player-tag .score-badge {
+      background: #3a3a66;
+      border-radius: 30px;
+      padding: 2px 12px;
+      font-size: 0.9rem;
+    }
+    .player-tag .remove-x {
+      cursor: pointer;
+      color: var(--text-dim);
+      font-weight: 700;
+      padding: 0 6px;
+      border-radius: 50%;
+      transition: .15s;
+    }
+    .player-tag .remove-x:hover { color: var(--bad); background: rgba(231,76,60,.15); }
+
+    .game-container {
+      max-width: 1020px;
+      width: 100%;
+      padding: 0;
+    }
+    .game-container .screen {
+      max-width: 1020px;
+      padding: 20px;
+      gap: 16px;
+    }
+    .field-container {
+      background: radial-gradient(circle at 50% 20%, #1c2140 0%, var(--panel-2) 80%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 10px;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      min-height: 200px;
+      position: relative;
+    }
+    .field-container.visible {
+      display: flex;
+    }
+    /* Ручной просмотр поля («🗺️ Игровое поле») открывается как отдельный
+       полноэкранный просмотр — по аналогии с лупой у карт. */
+    .field-container.overlay-mode {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      max-width: none;
+      z-index: 1300;
+      background: rgba(8,8,20,.92);
+      border: none;
+      border-radius: 0;
+      padding: 20px;
+    }
+    #fieldCanvas {
+      width: 100%;
+      max-width: 520px;
+      height: auto;
+      aspect-ratio: 16/9;
+      border-radius: 12px;
+      display: block;
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      width: 100%;
+      margin: 8px 0;
+    }
+    .card {
+      background: linear-gradient(160deg,#232350,#181834);
+      border-radius: 12px;
+      padding: 0;
+      text-align: center;
+      font-size: 1rem;
+      font-weight: 600;
+      border: 3px solid transparent;
+      transition: .15s;
+      cursor: pointer;
+      box-shadow: 0 5px 10px rgba(0,0,0,.35);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      word-break: break-word;
+      position: relative;
+      overflow: hidden;
+    }
+    .card .emoji { font-size: 1.8rem; display:block; margin-bottom:3px; }
+    .card .card-img { width:100%; height:auto; aspect-ratio: 229 / 343; object-fit:contain; background:#0b0b1c; border-radius:0; display:block; }
+
+    /* Индикация состояния подгрузки картинки карты (см. watchCardImage/attemptImageLoad) */
+    img.img-pending {
+      background:
+        linear-gradient(100deg, rgba(255,255,255,0) 30%, rgba(255,255,255,.08) 50%, rgba(255,255,255,0) 70%) #14142c;
+      background-size: 200% 100%;
+      animation: imgShimmer 1.3s ease-in-out infinite;
+      min-height: 60px;
+    }
+    @keyframes imgShimmer {
+      0% { background-position: 150% 0; }
+      100% { background-position: -50% 0; }
+    }
+    img.img-error {
+      min-height: 60px;
+      background: repeating-linear-gradient(135deg, #2a1414, #2a1414 10px, #3a1a1a 10px, #3a1a1a 20px);
+      cursor: pointer;
+      color: #ffb3b3;
+      font-size: .75rem;
+      text-align: center;
+    }
+    .card.selected { border-color: var(--accent); background:#2c2c58; transform:scale(1.04); }
+    .card.played { opacity:.55; cursor:default; }
+    .card.no-select { cursor:not-allowed; }
+    .card.my-card { border-color:var(--good); background:#173a29; box-shadow:0 0 12px rgba(46,204,113,.35); }
+    .card.leader-card { border-color:#f1c40f; box-shadow:0 0 16px rgba(241,196,15,.45); background:#332c17; }
+    .card.mammoth-card { border-color:var(--bad); box-shadow:0 0 16px rgba(231,76,60,.4); background:#331a1a; }
+    .card .my-label { font-size:.58rem; background:var(--good); color:#06210f; padding:1px 5px; border-radius:5px; margin-top:2px; font-weight:700; }
+    .card .voter-icons { display:flex; flex-wrap:wrap; gap:2px; justify-content:center; margin-top:4px; font-size:.6rem; }
+    .card .voter-icons .voter { background:#3a3a66; border-radius:10px; padding:0 5px; color:#fff; font-size:.55rem; }
+    .card .view-btn, .deck-tile .view-btn {
+      position:absolute; top:4px; right:4px;
+      background:rgba(0,0,0,.5); border-radius:50%; width:28px; height:28px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:.8rem; color:#fff; border:none; cursor:pointer;
+      transition:.15s;
+    }
+    .card .view-btn:hover, .deck-tile .view-btn:hover { background:rgba(245,200,66,.8); }
+
+    .deck-tile-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      width: 100%;
+      margin: 8px 0;
+      text-align: center;
+    }
+    .deck-tile {
+      position: relative;
+      background: linear-gradient(160deg,#232350,#181834);
+      border-radius: 14px;
+      border: 3px solid transparent;
+      cursor: pointer;
+      overflow: hidden;
+      transition: .15s;
+      box-shadow: 0 5px 10px rgba(0,0,0,.35);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .deck-tile:hover { transform: scale(1.03); }
+    .deck-tile img { width:100%; aspect-ratio: 1/1; object-fit:cover; display:block; background:#0b0b1c; }
+    .deck-tile .deck-tile-label { padding:6px 4px 0; font-size:.85rem; font-weight:700; }
+    .deck-tile .deck-tile-count { font-size:.65rem; color:var(--text-dim); padding:0 4px 6px; }
+    .deck-tile.selected { border-color: var(--accent); background:#2c2c58; box-shadow: 0 0 16px rgba(245,200,66,.4); }
+
+    @media (max-width: 600px) {
+      .card-grid { gap: 8px; }
+      .card { padding: 0; font-size:.9rem; }
+      .card .emoji { font-size:1.6rem; }
+    }
+
+    .players-panel-horizontal {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 10px;
+      width: 100%;
+    }
+    .player-avatar {
+      position:relative;
+      width:56px; height:56px;
+      border-radius:50%;
+      border:3px solid transparent;
+      background:var(--panel-3);
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      transition:.18s;
+      font-size:.65rem;
+      color:var(--text-dim);
+      text-align:center;
+      padding:3px;
+      flex-shrink:0;
+    }
+    .player-avatar .emoji-big { font-size:1.5rem; line-height:1; }
+    .player-avatar .name { font-size:.55rem; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:50px; }
+    .player-avatar .score { font-size:.5rem; background:#3a3a66; border-radius:10px; padding:0 4px; margin-top:1px; }
+    .player-avatar.active { border-color:var(--accent); background:#242452; transform:scale(1.06); box-shadow:0 0 14px rgba(245,200,66,.35); }
+    .player-avatar.leader { border-color:#f1c40f; }
+    .player-avatar.leader::before { content:'👑'; position:absolute; top:-9px; font-size:.8rem; }
+    .player-avatar.bot { border-color:var(--host); opacity:.92; }
+    .player-avatar.offline { opacity:.45; filter:grayscale(.6); }
+    .player-avatar .offline-badge { position:absolute; bottom:-4px; right:-4px; font-size:.6rem; }
+    .player-avatar.is-host::after { content:'H'; position:absolute; bottom:-4px; right:-2px; background:var(--host); color:#fff; font-size:.5rem; font-weight:700; border-radius:50%; width:13px; height:13px; line-height:13px; }
+    .player-avatar .status-dot { position:absolute; top:-3px; right:-3px; width:12px; height:12px; border-radius:50%; font-size:.5rem; display:flex; align-items:center; justify-content:center; background:var(--panel-2); border:1px solid var(--border); }
+    .player-avatar .status-dot.done { background:var(--good); border-color:var(--good); color:#06210f; }
+    .player-avatar .status-dot.pending { background:transparent; color:var(--text-dim); }
+    .player-avatar .leave-x { position:absolute; bottom:-4px; left:-4px; width:15px; height:15px; border-radius:50%; background:var(--panel-2); border:1px solid var(--border); color:var(--text-dim); font-size:.5rem; line-height:13px; text-align:center; cursor:pointer; transition:.15s; }
+    .player-avatar .leave-x:hover { background:var(--bad); color:#fff; border-color:var(--bad); }
+
+    .info-text {
+      margin:8px 0;
+      text-align:center;
+      color:var(--text-dim);
+    }
+    .info-text.warn { color:#ff9d9d; }
+    .info-text.success { color:var(--good); }
+    .action-btn { margin-top:10px; }
+    .result-total { font-weight:800; color:var(--accent); font-size:1.15rem; margin-top:6px; }
+    .round-summary { margin-top:10px; text-align:left; }
+    .round-summary .rs-title { font-weight:700; color:var(--accent); font-size:1.15rem; margin-bottom:2px; text-align:center; }
+
+    /* Единый стиль для объявлений/призывов к действию — как «Придумайте ассоциацию»:
+       крупно, по центру, градиентная надпись, без коробки и боковой подсветки. */
+    .announce {
+      font-size: 1.4rem;
+      font-weight: 700;
+      text-align: center;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      margin: 6px 0 12px;
+      line-height: 1.3;
+    }
+    .announce.small { font-size: 1.15rem; margin-bottom: 8px; }
+
+    /* Кнопки выбора — списком одна под другой */
+    .stack-btns { display:flex; flex-direction:column; gap:10px; width:100%; margin-top:10px; }
+
+    .hidden { display:none !important; }
+    .footer-note { margin-top:20px; text-align:center; font-size:0.7rem; color:#565a80; }
+
+    #toastContainer {
+      position:fixed;
+      left:0; right:0; bottom:24px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:10px;
+      z-index:999;
+      pointer-events:none;
+    }
+    .toast {
+      background:#20203f;
+      border:1px solid var(--border);
+      color:var(--text);
+      padding:12px 24px;
+      border-radius:60px;
+      font-size:1rem;
+      box-shadow:var(--shadow);
+      opacity:0;
+      transform:translateY(10px);
+      transition:.25s;
+      max-width:90vw;
+      text-align:center;
+      pointer-events:auto;
+    }
+    .toast.show { opacity:1; transform:translateY(0); }
+    .toast.info { border-color:var(--info); }
+    .toast.success { border-color:var(--good); }
+    .toast.warn { border-color:var(--bad); }
+
+    .confirm-overlay {
+      position:fixed; inset:0;
+      background:rgba(8,8,20,.65);
+      backdrop-filter:blur(2px);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      z-index:1200;
+      padding:20px;
+    }
+    .overlay-close {
+      position:absolute;
+      top:16px; right:16px;
+      background:rgba(0,0,0,.5);
+      border:none;
+      color:#fff;
+      font-size:1.8rem;
+      line-height:1;
+      width:40px; height:40px;
+      border-radius:50%;
+      cursor:pointer;
+      z-index:1201;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      transition:.15s;
+    }
+    .overlay-close:hover { background:rgba(245,200,66,.8); }
+    .confirm-box {
+      background:linear-gradient(180deg, var(--panel), var(--panel-2));
+      border:1px solid var(--border);
+      border-radius:var(--radius-lg);
+      box-shadow:var(--shadow);
+      padding:24px 28px;
+      max-width:360px;
+      width:100%;
+      text-align:center;
+    }
+    .confirm-box p { font-size:1.1rem; line-height:1.5; margin-bottom:16px; }
+
+    .deck-picker {
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      margin:6px 0 4px;
+      max-height:48vh;
+      overflow-y:auto;
+      text-align:left;
+    }
+    .deck-option {
+      display:flex;
+      align-items:center;
+      gap:10px;
+      background:var(--panel-2);
+      border:1px solid var(--border);
+      border-radius:var(--radius-md);
+      padding:10px 12px;
+      cursor:pointer;
+      transition:.15s;
+    }
+    .deck-option.checked { border-color:var(--accent); background:var(--accent-soft); }
+    .deck-option input[type="checkbox"] { width:18px; height:18px; flex-shrink:0; accent-color:var(--accent); }
+    .deck-thumb { width:42px; height:42px; border-radius:8px; object-fit:cover; flex-shrink:0; }
+    .deck-option .deck-name { flex:1; font-weight:600; }
+    .deck-count { color:var(--text-dim); font-size:.85rem; white-space:nowrap; }
+
+    .card-viewer {
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.92);
+      z-index:2000;
+      display:flex;
+      flex-direction:column;
+      align-items:stretch;
+      padding:16px;
+      gap:10px;
+    }
+    .card-viewer.hidden { display:none; }
+    .card-viewer .viewer-close {
+      position:absolute;
+      top:16px;
+      right:16px;
+      background:none;
+      border:none;
+      color:#fff;
+      font-size:2.5rem;
+      cursor:pointer;
+      z-index:2001;
+    }
+    .card-viewer .viewer-content {
+      flex:1;
+      min-height:0;
+      width:100%;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:12px;
+    }
+    .card-viewer .viewer-image {
+      flex:1;
+      min-height:0;
+      width:100%;
+      max-width:640px;
+      background:var(--panel-3);
+      border-radius:20px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      box-shadow:0 10px 40px rgba(0,0,0,.8);
+      font-size:4rem;
+      text-align:center;
+      flex-direction:column;
+      gap:10px;
+      overflow:hidden;
+    }
+    .card-viewer .viewer-image img {
+      width:100%;
+      height:100%;
+      object-fit:contain;
+      display:block;
+    }
+    .card-viewer .viewer-nav {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      width:100%;
+      max-width:640px;
+      flex-shrink:0;
+      gap:12px;
+    }
+    .card-viewer .viewer-nav button {
+      background:rgba(255,255,255,.1);
+      border:1px solid var(--border);
+      color:#fff;
+      padding:10px 24px;
+      border-radius:30px;
+      font-size:1.2rem;
+      cursor:pointer;
+      transition:.15s;
+    }
+    .card-viewer .viewer-nav button:hover { background:rgba(255,255,255,.2); }
+    .card-viewer .viewer-counter {
+      color:#fff;
+      font-size:1.2rem;
+      display:flex;
+      align-items:center;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <div id="toastContainer"></div>
+
+  <div id="confirmOverlay" class="confirm-overlay hidden">
+    <div class="confirm-box">
+      <p id="confirmMessage">Вы уверены?</p>
+      <div class="stack-btns">
+        <button class="btn btn-danger" id="confirmOkBtn">Подтвердить</button>
+        <button class="btn btn-secondary" id="confirmCancelBtn">Отмена</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="cardViewer" class="card-viewer hidden">
+    <button class="viewer-close" id="cardViewerClose">&times;</button>
+    <div class="viewer-content">
+      <div class="viewer-image" id="cardViewerImage"></div>
+      <div class="viewer-nav">
+        <button id="cardViewerPrev">◀</button>
+        <span class="viewer-counter" id="cardViewerCounter">1 / 1</span>
+        <button id="cardViewerNext">▶</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ЭКРАН 1: ВЫБОР ДЕЙСТВИЯ -->
+  <div id="screenAction" class="screen active">
+    <div class="big-title" style="font-size:1.8rem;">🧙 Имаджинариум</div>
+    <button class="btn" id="actionCreateBtn">✨ Создать комнату</button>
+    <button class="btn btn-secondary" id="actionJoinBtn">🔑 Зайти в комнату</button>
+    <div id="joinForm" class="hidden" style="width:100%; display:flex; flex-direction:column; gap:12px;">
+      <input type="text" id="joinCodeInput" class="input-big" placeholder="Код комнаты" maxlength="8" style="text-transform:uppercase;">
+      <button class="btn btn-success" id="joinRoomBtn">Далее →</button>
+      <button class="btn btn-ghost btn-sm" id="joinBackBtn">← Назад</button>
+    </div>
+  </div>
+
+  <!-- ЭКРАН 2: ПРЕДСТАВЬТЕСЬ -->
+  <div id="screenIntro" class="screen">
+    <div class="big-title" style="font-size:1.8rem;">🧙 Имаджинариум</div>
+    <div class="big-sub">Представьтесь:</div>
+    <input type="text" id="playerName" class="input-big" placeholder="Ваше имя" maxlength="12">
+    <button class="btn" id="introApplyBtn">Применить</button>
+  </div>
+
+  <!-- ЭКРАН 3: ВЫБОР ИКОНКИ И ЦВЕТА -->
+  <div id="screenAvatar" class="screen">
+    <div class="big-title" style="font-size:1.8rem;">🧙 Имаджинариум</div>
+    <div class="big-sub">Выберите иконку и цвет</div>
+    <div class="picker-grid" id="iconPicker"></div>
+    <div class="picker-grid" id="colorPicker"></div>
+    <button class="btn" id="avatarApplyBtn">Применить</button>
+  </div>
+
+  <!-- ЭКРАН 4: КОМНАТА -->
+  <div id="screenRoom" class="screen">
+    <div class="big-title" style="font-size:1.8rem;">🧙 Имаджинариум</div>
+    <div class="room-code" id="roomIdDisplay">—</div>
+    <div class="qr-container" id="qrBlock" style="display:none;">
+      <div id="roomQr"></div>
+    </div>
+    <div id="offlineRoomNote" class="info-text hidden">📡 Нет связи для приглашения игроков по коду/QR — но с ботами можно играть прямо сейчас.</div>
+    <div class="players-list" id="playersList"></div>
+    <button class="btn btn-secondary" id="deckBrowseBtn">📖 Ознакомиться с колодами</button>
+    <button class="btn" id="startGameBtn" style="margin-top:6px;">🎮 Начать игру</button>
+    <div id="roomHostPanel" class="hidden" style="display:flex; gap:10px; width:100%; flex-wrap:wrap; margin-top:8px;">
+      <button class="btn btn-secondary btn-sm" id="addBotBtnGlobal">➕ Бот</button>
+      <button class="btn btn-secondary btn-sm" id="clearBotsBtnGlobal">🗑️ Убрать ботов</button>
+    </div>
+    <div id="waitingForHostNote" class="hidden" style="color:var(--text-dim); text-align:center; font-size:1.1rem;">⏳ Ожидайте, хост начнёт игру</div>
+    <div style="height:22px;"></div>
+    <button class="btn btn-danger btn-sm" id="leaveRoomBtn">🚪 Выйти</button>
+  </div>
+
+  <!-- ОВЕРЛЕЙ: ПЛИТКИ КОЛОД (ЛОББИ И ВЫБОР ПЕРЕД СТАРТОМ) -->
+  <div id="deckLobbyOverlay" class="confirm-overlay hidden">
+    <button class="overlay-close" id="deckLobbyCloseX">&times;</button>
+    <div class="confirm-box" style="max-width:480px;">
+      <p id="deckLobbyTitle">Колоды карт</p>
+      <div class="deck-tile-grid" id="deckLobbyGrid"></div>
+      <div class="stack-btns">
+        <button class="btn btn-secondary" id="deckLobbyCloseBtn">Закрыть</button>
+        <button class="btn btn-secondary hidden" id="deckLobbyCancelBtn">Отмена</button>
+        <button class="btn btn-success hidden" id="deckLobbyStartBtn">🎮 Начать игру</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ОВЕРЛЕЙ: ПОЛНОЕ СОДЕРЖИМОЕ КОЛОДЫ -->
+  <div id="deckContentOverlay" class="confirm-overlay hidden">
+    <button class="overlay-close" id="deckContentCloseX">&times;</button>
+    <div class="confirm-box" style="max-width:640px; max-height:88vh; overflow-y:auto;">
+      <p id="deckContentTitle">Колода</p>
+      <div class="card-grid" id="deckContentGrid"></div>
+      <div class="stack-btns">
+        <button class="btn btn-secondary" id="deckContentBackBtn">← Назад</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ЭКРАН 5: ИГРА -->
+  <div id="screenGame" class="screen game-container">
+    <div style="width:100%;">
+      <!-- Панель игроков -->
+      <div class="players-panel-horizontal" id="playersPanel"></div>
+      <div style="text-align:center; margin: 2px 0 6px;">
+        <button class="btn btn-secondary btn-sm" id="viewFieldBtn">🗺️ Игровое поле</button>
+      </div>
+      <!-- Поле (скрыто по умолчанию) -->
+      <div class="field-container" id="fieldContainer">
+        <button class="overlay-close hidden" id="fieldCloseBtn" style="top:6px; right:6px; width:32px; height:32px; font-size:1.4rem;">&times;</button>
+        <canvas id="fieldCanvas" width="520" height="292"></canvas>
+      </div>
+      <!-- Окно игрока (без технической информации) -->
+      <div style="display:flex; gap:12px; margin-top:14px; flex-wrap:wrap;">
+        <div style="flex:1; background:var(--panel-2); border:1px solid var(--border); border-radius:var(--radius-md); padding:14px 16px; min-width:0;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
+            <span id="windowPlayerName" style="display:none;"></span>
+          </div>
+          <div id="windowContent" style="font-size:0.95rem; line-height:1.5;"></div>
+        </div>
+      </div>
+      <div style="height:26px;"></div>
+      <div class="stack-btns">
+        <button class="btn btn-danger btn-sm" id="resetGameBtn">🔄 Сбросить</button>
+        <button class="btn btn-secondary btn-sm" id="exitGameBtn">🚪 Выйти</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-note">v12.4 · 🧙 Имаджинариум</div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // ГЛОБАЛЬНЫЕ ЭЛЕМЕНТЫ
+  const fieldCanvas = document.getElementById('fieldCanvas');
+  const ctx = fieldCanvas.getContext('2d');
+  const roomQrEl = document.getElementById('roomQr');
+  const qrBlock = document.getElementById('qrBlock');
+  const fieldContainer = document.getElementById('fieldContainer');
+
+  // КОНФИГУРАЦИЯ
+  const FIELD_SIZE = 33;
+  const COLORS = ['#e74c3c','#3498db','#2ecc71','#f1c40f','#9b59b6','#e67e22','#1abc9c','#e84393','#6c5ce7','#00cec9'];
+  const AVATAR_ICONS = ['🐘','🦁','🐯','🦊','🐼','🐸','🦄','🐙','🦉','🐲'];
+
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyCBFY6epFpgy2APbaBXw7wbDffCp-YoyTg",
+    authDomain: "imaginarium-736bb.firebaseapp.com",
+    databaseURL: "https://imaginarium-736bb-default-rtdb.firebaseio.com",
+    projectId: "imaginarium-736bb",
+    storageBucket: "imaginarium-736bb.firebasestorage.app",
+    messagingSenderId: "333635031463",
+    appId: "1:333635031463:web:29fee001c726450a00a682",
+  };
+
+  // Базовый адрес, откуда раздаются картинки карт (вынесено с Netlify на GitHub Pages,
+  // чтобы не расходовать лимит трафика Netlify — см. переписку с пользователем).
+  const CARDS_BASE_URL = 'https://ilyaefimov62.github.io/imaginarium-cards/cards';
+
+  // Генератор колод с карточками-картинками: файлы лежат в cards/<papka>/001.png..NNN.png
+  function makeImageDeck(id, name, folder, count, cover){
+    const cards = [];
+    for (let i = 1; i <= count; i++){
+      const num = String(i).padStart(3, '0');
+      cards.push({ img: `${CARDS_BASE_URL}/${folder}/${num}.png` });
+    }
+    return { id, name, cover: cover || `${CARDS_BASE_URL}/${folder}/cover.png`, cards };
+  }
+
+  const CARD_DECKS = [
+    makeImageDeck('baza', 'База', 'baza', 98),
+    makeImageDeck('x', 'X', 'x', 100),
+    // Новые колоды будут добавляться сюда так же — одной строкой через makeImageDeck(...)
+  ];
+  CARD_DECKS.forEach(deck => {
+    deck.cards.forEach((c, i) => { c.uid = deck.id + '#' + i; c.deckId = deck.id; });
+  });
+
+  function getDeckById(id){ return CARD_DECKS.find(d => d.id === id); }
+  function totalCardsInDecks(deckIds){
+    return (deckIds || []).reduce((sum, id) => { const d = getDeckById(id); return sum + (d ? d.cards.length : 0); }, 0);
+  }
+  function shuffle(arr){
+    for(let i=arr.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [arr[i],arr[j]]=[arr[j],arr[i]];
+    }
+    return arr;
+  }
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+  }
+
+  // ПРОФИЛЬ
+  const PROFILE_KEY = 'imaginarium_profile_v1';
+  let profile = {
+    name: '',
+    icon: AVATAR_ICONS[0],
+    color: COLORS[0],
+  };
+
+  function loadProfile() {
+    try {
+      const raw = localStorage.getItem(PROFILE_KEY);
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (p.name) profile.name = p.name;
+        if (p.icon && AVATAR_ICONS.includes(p.icon)) profile.icon = p.icon;
+        if (p.color && COLORS.includes(p.color)) profile.color = p.color;
+      }
+    } catch(e) {}
+  }
+  function saveProfile() {
+    try {
+      localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+    } catch(e) {}
+  }
+
+  // УПРАВЛЕНИЕ ЭКРАНАМИ
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  // ИГРОВОЕ СОСТОЯНИЕ
+  const HOST_ID = 'host';
+
+  let G = {
+    players: [],
+    botPlayers: [],
+    currentLeaderIndex: 0,
+    turn: 0,
+    phase: 'setup',
+    association: '',
+    associationInput: '',
+    votes: {},
+    votes2: {},
+    leaderCardIndex: -1,
+    playedCards: [],
+    selectedCardIndex: -1,
+    selectedCardForPlayer: {},
+    selectedVoteForPlayer: {},
+    selectedCards2: {},
+    placedPlayers: [],
+    leaderCard: null,
+    mammothCard: null,
+
+    myId: HOST_ID,
+    isHost: true,
+    isRoomHost: true,
+    roomId: '—',
+    gameMode: '4plus',
+    gameStarted: false,
+    gameOver: false,
+    stopReason: '',
+    awaitingContinueDecision: false,
+    finishInfo: null,
+    finishInfoPlayerId: null,
+    pendingRawCommon: null,
+    pendingRawMammoth: null,
+    selectedDeckIds: [],
+    awaitingDeckDecision: false,
+    deckDecisionInfo: null,
+    deckDecisionAfterAction: null,
+    deckSwitchPickerOpen: false,
+    pendingAdvanceMode2: false,
+    playerPresence: {},
+
+    mammothPosition: 0,
+    commonSlonPosition: 0,
+
+    activePlayerId: null,
+    pawnAnim: {},
+    pawnAnimLock: {},
+    animCommon: { from:0, to:0, progress:1 },
+    animMammoth: { from:0, to:0, progress:1 },
+    deck: [],
+    discard: [],
+    lastResult: null,
+
+    showField: false,
+    fieldTimer: null,
+  };
+
+  function getPlayer(id){ return G.players.find(p => p.id === id); }
+  function getActivePlayer(){ return getPlayer(G.activePlayerId); }
+  function getLeader(){ return G.players[G.currentLeaderIndex] || null; }
+  function isBotId(id){ return G.botPlayers.includes(id); }
+  function getPlayerColor(id){ return getPlayer(id)?.color || '#fff'; }
+  function colorName(name, color){ return `<span style="color:${color}; font-weight:700;">${escapeHtml(name)}</span>`; }
+  function colorPlayerName(id){
+    const p = getPlayer(id);
+    return p ? colorName(p.name, p.color || '#fff') : '?';
+  }
+  function modeLabel(mode){
+    return mode === '2' ? '2 игрока (кооп.)' : mode === '3' ? '3 игрока' : '4+ игроков';
+  }
+  function cardFaceHtml(card){
+    if (!card) return '';
+    if (card.img) return `<img class="card-img" src="${card.img}" alt="${escapeHtml(card.word || 'карта')}">`;
+    return `<span class="emoji">${card.emoji}</span>${escapeHtml(card.word)}`;
+  }
+
+  // ===================================================================
+  // НАДЁЖНАЯ ПОДГРУЗКА КАРТИНОК КАРТ
+  // Проблема: на слабом Wi-Fi/мобильном интернете при показе сразу
+  // много <img> (рука, разложенные карты, колода целиком) браузер
+  // открывает десятки параллельных запросов, канал захлёбывается,
+  // и часть картинок обрывается на середине загрузки и зависает так
+  // навсегда. Решение ниже перехватывает КАЖДУЮ картинку карты
+  // (независимо от того, где и как она отрисована), грузит их
+  // ограниченными порциями, по таймауту перезапускает зависшую
+  // загрузку и умеет докачивать по требованию пользователя.
+  // ===================================================================
+  const IMG_MAX_CONCURRENT = 4;   // не больше N одновременных загрузок
+  const IMG_TIMEOUT_MS = 10000;   // если за это время не пришло — считаем зависшей
+  const IMG_MAX_AUTO_ATTEMPTS = 4; // автоматических попыток на картинку
+
+  let imgLoadQueue = [];
+  let imgLoadActive = 0;
+
+  function imgQueuePush(task){
+    imgLoadQueue.push(task);
+    imgQueuePump();
+  }
+  function imgQueuePump(){
+    while (imgLoadActive < IMG_MAX_CONCURRENT && imgLoadQueue.length){
+      const task = imgLoadQueue.shift();
+      imgLoadActive++;
+      task(() => { imgLoadActive--; imgQueuePump(); });
+    }
+  }
+
+  // Картинки, которые уже успешно грузились в этой сессии — почти наверняка
+  // лежат в кэше браузера. Без этой проверки каждая перерисовка экрана
+  // (например, просто выбор карты) создаёт новые <img>-элементы с тем же
+  // src, и наш менеджер загрузки на мгновение гасил src у уже готовой
+  // картинки, отчего она мерцала «битой иконкой» при каждом действии.
+  const loadedImageUrls = new Set();
+
+  function attemptImageLoad(img, baseSrc, attempt, releaseSlot){
+    let settled = false;
+    // На повторных попытках добавляем параметр, чтобы не получить
+    // из кэша/от сервера тот же оборванный полу-загруженный ответ.
+    const url = attempt === 0 ? baseSrc : baseSrc + (baseSrc.indexOf('?') >= 0 ? '&' : '?') + '_retry=' + attempt;
+
+    const timer = setTimeout(() => { finish(false); }, IMG_TIMEOUT_MS);
+
+    function finish(ok){
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      img.onload = null;
+      img.onerror = null;
+      if (ok){
+        img.classList.remove('img-pending', 'img-error');
+        loadedImageUrls.add(baseSrc);
+        releaseSlot();
+      } else if (attempt + 1 < IMG_MAX_AUTO_ATTEMPTS){
+        img.removeAttribute('src');
+        releaseSlot();
+        imgQueuePush((rs) => attemptImageLoad(img, baseSrc, attempt + 1, rs));
+      } else {
+        img.classList.remove('img-pending');
+        img.classList.add('img-error');
+        img.dataset.origSrc = baseSrc;
+        img.alt = '⟳ не загрузилось — нажмите';
+        img.title = 'Не удалось загрузить картинку. Нажмите, чтобы повторить попытку.';
+        releaseSlot();
+      }
+    }
+
+    img.onload = () => finish(true);
+    img.onerror = () => finish(false);
+    img.src = url;
+  }
+
+  function watchCardImage(img){
+    if (img.dataset.imgWatched) return;
+    const src = img.getAttribute('src');
+    if (!src) return;
+    img.dataset.imgWatched = '1';
+    if (loadedImageUrls.has(src)){
+      // Уже грузили эту картинку раньше в этой сессии — не гасим src,
+      // пусть браузер отдаст её мгновенно из своего кэша.
+      return;
+    }
+    img.dataset.origSrc = src;
+    img.removeAttribute('src');
+    img.classList.add('img-pending');
+    cardImgVisibilityObserver.observe(img);
+  }
+
+  const cardImgVisibilityObserver = ('IntersectionObserver' in window)
+    ? new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting){
+            cardImgVisibilityObserver.unobserve(entry.target);
+            imgQueuePush((rs) => attemptImageLoad(entry.target, entry.target.dataset.origSrc, 0, rs));
+          }
+        });
+      }, { root:null, rootMargin:'250px', threshold:0.01 })
+    : { observe(img){ imgQueuePush((rs) => attemptImageLoad(img, img.dataset.origSrc, 0, rs)); } };
+
+  function retryFailedImage(img){
+    img.classList.remove('img-error');
+    img.classList.add('img-pending');
+    imgQueuePush((rs) => attemptImageLoad(img, img.dataset.origSrc, 0, rs));
+  }
+
+  function scanForCardImages(root){
+    if (!root || !root.querySelectorAll) return;
+    root.querySelectorAll('img.card-img, .deck-tile img, .viewer-image img').forEach(watchCardImage);
+  }
+
+  document.addEventListener('click', (e) => {
+    const img = e.target.closest && e.target.closest('img.img-error');
+    if (img) retryFailedImage(img);
+  });
+
+  const cardImgMutationObserver = new MutationObserver((mutations) => {
+    mutations.forEach(m => {
+      m.addedNodes.forEach(node => {
+        if (node.nodeType !== 1) return;
+        if (node.matches && (node.matches('img.card-img') || node.matches('.deck-tile img') || node.matches('.viewer-image img'))){
+          watchCardImage(node);
+        }
+        scanForCardImages(node);
+      });
+    });
+  });
+  cardImgMutationObserver.observe(document.getElementById('app'), { childList: true, subtree: true });
+  scanForCardImages(document.getElementById('app'));
+
+  // Функции работы с колодой
+  function drawFromDeck(){
+    // Важно: НЕ подмешиваем сброс автоматически. Пока в G.deck остаются
+    // карты — раздаём только их. Если колода закончилась, возвращаем null:
+    // это заставит ensureEnoughCards() показать игроку явный выбор
+    // (закончить / доиграть этой же колодой / выбрать новую), а не тихо
+    // подсунуть недавно сыгранные карты обратно без вопроса.
+    if (G.deck.length === 0) return null;
+    return G.deck.pop();
+  }
+
+  function dealAllPlayers(){
+    G.players.forEach(p => {
+      if (p.cards && p.cards.length){ G.discard.push(...p.cards.filter(Boolean)); p.cards = []; }
+      p.cards = [];
+    });
+    // Раздаём по кругу (1-я карта всем, потом 2-я всем и т.д.), а не по 6 подряд
+    // одному игроку — иначе при нехватке карт остатки старой колоды достаются
+    // только первому в очереди, а остальным — уже совсем другой набор.
+    for (let round = 0; round < 6; round++){
+      G.players.forEach(p => {
+        const c = drawFromDeck();
+        if (c) p.cards.push(c);
+      });
+    }
+  }
+
+  function refillHand(p){
+    while (p.cards.length < 6){
+      const c = drawFromDeck();
+      if (!c) break;
+      p.cards.push(c);
+    }
+  }
+
+  // Аналог refillHand, но для нескольких игроков сразу — добирает карты по
+  // кругу (каждому по одной за раз), чтобы приоритетные (например, остатки
+  // прежней колоды) карты доставались всем поровну, а не первому по списку.
+  function refillHandsRoundRobin(players){
+    let progress = true;
+    while (progress){
+      progress = false;
+      for (const p of players){
+        if (!p.cards) p.cards = [];
+        if (p.cards.length < 6){
+          const c = drawFromDeck();
+          if (!c) return;
+          p.cards.push(c);
+          progress = true;
+        }
+      }
+    }
+  }
+
+  function collectHeldCardUids(){
+    const held = new Set();
+    G.players.forEach(p => (p.cards||[]).forEach(c => { if (c && c.uid) held.add(c.uid); }));
+    if (G.leaderCard && G.leaderCard.uid) held.add(G.leaderCard.uid);
+    if (G.mammothCard && G.mammothCard.uid) held.add(G.mammothCard.uid);
+    (G.playedCards||[]).forEach(item => { if (item.card && item.card.uid) held.add(item.card.uid); });
+    return held;
+  }
+  function buildPoolFromDecks(deckIds, excludeUids){
+    const pool = [];
+    (deckIds||[]).forEach(id => {
+      const deck = getDeckById(id);
+      if (!deck) return;
+      deck.cards.forEach(c => { if (!excludeUids.has(c.uid)) pool.push(c); });
+    });
+    return pool;
+  }
+  function calcNeededCards(){
+    if (G.gameMode === '2') return G.players.length * 6 + 1; // полная пересдача рук + карта мамонта
+    const refillNeeded = G.players.reduce((sum,p) => sum + Math.max(0, 6-(p.cards?p.cards.length:0)), 0);
+    const modeExtra = G.gameMode === '3' ? 2 : 0;
+    return refillNeeded + modeExtra;
+  }
+  function ensureEnoughCards(afterAction){
+    const needed = calcNeededCards();
+    // Сбрасом (уже сыгранными картами) НЕ считаем доступным запасом при решении,
+    // раздавать ли карты молча — он идёт в дело только если игрок сам выберет
+    // «доиграть этой же колодой». А вот для текста диалога и кнопки
+    // «Продолжить этим набором» нужен запас колода + пригодный для повторной
+    // раздачи сброс (только карты текущего выбора колод).
+    const rawAvailable = G.deck.length;
+    if (rawAvailable >= needed) return true;
+    const selectedSet = new Set(G.selectedDeckIds);
+    const recyclableDiscard = G.discard.filter(c => c && selectedSet.has(c.deckId)).length;
+    G.awaitingDeckDecision = true;
+    G.deckDecisionInfo = { needed, available: G.deck.length + recyclableDiscard };
+    G.deckDecisionAfterAction = afterAction || 'advance';
+    renderGame();
+    return false;
+  }
+
+  // ===================================================================
+  // ПОЛЕ (canvas)
+  // ===================================================================
+  const TRACK_TOTAL = FIELD_SIZE + 1;
+  const TRACK_GRID = (() => {
+    const pts = [];
+    const push = (x,y) => pts.push([x,y]);
+    for (let x=0; x<=6; x++) push(x,0);
+    push(6,1); push(6,2);
+    for (let x=7; x<=11; x++) push(x,2);
+    for (let y=3; y<=6; y++) push(11,y);
+    for (let x=10; x>=4; x--) push(x,6);
+    push(4,5);
+    for (let x=3; x>=0; x--) push(x,5);
+    for (let y=4; y>=1; y--) push(0,y);
+    return pts;
+  })();
+
+  let _trackCellsCache = null;
+  function buildTrackCells(){
+    const w = fieldCanvas.width, h = fieldCanvas.height;
+    let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+    TRACK_GRID.forEach(([x,y]) => { minX=Math.min(minX,x); maxX=Math.max(maxX,x); minY=Math.min(minY,y); maxY=Math.max(maxY,y); });
+    const w0 = maxX-minX, h0 = maxY-minY;
+    const marginFrac = 0.09;
+    const scalePx = Math.min((w*(1-2*marginFrac))/w0, (h*(1-2*marginFrac))/h0);
+    const usedW = w0*scalePx, usedH = h0*scalePx;
+    const offX = (w-usedW)/2, offY = (h-usedH)/2;
+    return TRACK_GRID.map(([x,y]) => ({
+      x: (offX + (x-minX)*scalePx) / w,
+      y: (offY + (y-minY)*scalePx) / h,
+    }));
+  }
+  function getTrackCells(){
+    if (!_trackCellsCache) _trackCellsCache = buildTrackCells();
+    return _trackCellsCache;
+  }
+  function getTrackPosition(index){
+    const cells = getTrackCells();
+    const n = cells.length;
+    let idx = index % n;
+    if (idx < 0) idx += n;
+    const i0 = Math.floor(idx);
+    const i1 = (i0+1) % n;
+    const frac = idx - i0;
+    const c0 = cells[i0], c1 = cells[i1];
+    return { x: c0.x + (c1.x-c0.x)*frac, y: c0.y + (c1.y-c0.y)*frac };
+  }
+  function roundRectPath(c, x, y, w, h, r){
+    c.beginPath();
+    c.moveTo(x+r, y);
+    c.arcTo(x+w, y, x+w, y+h, r);
+    c.arcTo(x+w, y+h, x, y+h, r);
+    c.arcTo(x, y+h, x, y, r);
+    c.arcTo(x, y, x+w, y, r);
+    c.closePath();
+  }
+  function drawCell(px, py, size, index, isFinish){
+    const half = size/2;
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 2;
+    roundRectPath(ctx, px-half, py-half, size, size, size*0.24);
+    const grad = ctx.createLinearGradient(px-half, py-half, px+half, py+half);
+    if (isFinish){ grad.addColorStop(0,'#ffe9ad'); grad.addColorStop(1,'#f5c842'); }
+    else if (index % 2 === 0){ grad.addColorStop(0,'#26264e'); grad.addColorStop(1,'#1a1a36'); }
+    else { grad.addColorStop(0,'#2b2b5a'); grad.addColorStop(1,'#1e1e40'); }
+    ctx.fillStyle = grad; ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.lineWidth = 1.4;
+    ctx.strokeStyle = isFinish ? '#fff3c4' : '#3c3c72';
+    ctx.stroke();
+    ctx.fillStyle = isFinish ? '#241c04' : '#9aa0c0';
+    if (isFinish){
+      ctx.font = Math.round(size*0.5) + 'px sans-serif';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('🏁', px, py - size*0.12);
+      ctx.font = 'bold ' + Math.round(size*0.26) + 'px sans-serif';
+      // Финиш — это же клетка «0» (старт нового круга), а не свой порядковый
+      // номер: иначе при игре на несколько кругов номер вида «33» сбивает с толку.
+      ctx.fillText('0', px, py + size*0.29);
+    } else {
+      ctx.font = 'bold ' + Math.round(size*0.44) + 'px sans-serif';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(index, px, py);
+    }
+    ctx.restore();
+  }
+
+  function drawPawn(px, py, r, emoji, bgColor, isHighlighted){
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 2;
+    ctx.beginPath(); ctx.arc(px, py, r, 0, 2*Math.PI);
+    ctx.fillStyle = bgColor || '#666';
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.lineWidth = isHighlighted ? 2.5 : 1.5;
+    ctx.strokeStyle = isHighlighted ? '#fff3c4' : 'rgba(255,255,255,.5)';
+    ctx.stroke();
+    ctx.font = Math.round(r*1.5) + 'px sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(emoji, px, py - r*0.02);
+    ctx.restore();
+  }
+
+  function computeStackOffsets(items){
+    const threshold = 0.35;
+    const groups = [];
+    items.forEach(item => {
+      let g = groups.find(gr => Math.abs(gr.pos - item.pos) < threshold);
+      if (!g){ g = { pos:item.pos, members:[] }; groups.push(g); }
+      g.members.push(item);
+    });
+    const offsets = {};
+    groups.forEach(g => {
+      if (g.members.length === 1){ offsets[g.members[0].key] = { dx:0, dy:0, front:true }; return; }
+      const rest = g.members.filter(m => !m.isMine);
+      const mine = g.members.find(m => m.isMine);
+      const count = Math.max(rest.length, 1);
+      rest.forEach((m, i) => {
+        const angle = -Math.PI/2 + (i + 0.5) * (2*Math.PI / count);
+        offsets[m.key] = { dx: Math.cos(angle), dy: Math.sin(angle), front:false };
+      });
+      if (mine) offsets[mine.key] = { dx:0, dy:0, front:true };
+      else if (rest.length) offsets[rest[rest.length-1].key].front = true;
+    });
+    return offsets;
+  }
+
+  function easeInOut(t){ return t<0.5 ? 2*t*t : -1+(4-2*t)*t; }
+
+  let animRunning = false;
+  function startAnimation(){
+    if (animRunning) return;
+    animRunning = true;
+    (function loop(){ drawFieldAnimated(); requestAnimationFrame(loop); })();
+  }
+
+  function drawFieldAnimated(){
+    const w = fieldCanvas.width, h = fieldCanvas.height;
+    ctx.clearRect(0,0,w,h);
+
+    if (!G.showField && !manualFieldView) {
+      return;
+    }
+
+    const cells = getTrackCells();
+    let minGap = Infinity;
+    for (let i=0;i<cells.length;i++){
+      const a = cells[i], b = cells[(i+1)%cells.length];
+      const dx=(a.x-b.x)*w, dy=(a.y-b.y)*h;
+      minGap = Math.min(minGap, Math.hypot(dx,dy));
+    }
+    const cellSize = minGap * 0.86;
+
+    ctx.beginPath();
+    cells.forEach((c,i) => { const px=c.x*w, py=c.y*h; i===0 ? ctx.moveTo(px,py) : ctx.lineTo(px,py); });
+    ctx.closePath();
+    ctx.strokeStyle = 'rgba(245,200,66,.16)';
+    ctx.lineWidth = Math.max(6, cellSize*0.4);
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.stroke();
+
+    cells.forEach((c,i) => {
+      drawCell(c.x*w, c.y*h, i===0 ? cellSize*1.22 : cellSize, i, i===0);
+    });
+
+    const rBase = cellSize*0.4;
+    const offR = rBase*0.6;
+
+    if (G.gameMode === '2'){
+      let cPos = G.commonSlonPosition;
+      if (G.animCommon.progress < 1){
+        G.animCommon.progress = Math.min(1, G.animCommon.progress + 0.04);
+        cPos = G.animCommon.from + (G.animCommon.to - G.animCommon.from) * easeInOut(G.animCommon.progress);
+      } else cPos = G.animCommon.to;
+
+      let mPos = G.mammothPosition;
+      if (G.animMammoth.progress < 1){
+        G.animMammoth.progress = Math.min(1, G.animMammoth.progress + 0.04);
+        mPos = G.animMammoth.from + (G.animMammoth.to - G.animMammoth.from) * easeInOut(G.animMammoth.progress);
+      } else mPos = G.animMammoth.to;
+
+      const items = [
+        { key:'mammoth', pos:mPos, isMine:false },
+        { key:'slon', pos:cPos, isMine:true },
+      ];
+      const offsets = computeStackOffsets(items);
+
+      const drawOne = (key, pos, emoji, bg, r) => {
+        const off = offsets[key] || { dx:0, dy:0, front:true };
+        const t = getTrackPosition(pos);
+        const px = t.x*w + off.dx*offR, py = t.y*h + off.dy*offR - r*0.5;
+        drawPawn(px, py, r, emoji, bg, off.front);
+      };
+      drawOne('mammoth', mPos, '🦣', '#7a2e2e', rBase*1.1);
+      drawOne('slon', cPos, '🐘', '#f5c842', rBase);
+    } else {
+      const items = G.players.map(p => {
+        let pos = p.position;
+        const anim = G.pawnAnim[p.id];
+        if (anim){
+          if (anim.progress < 1){
+            anim.progress = Math.min(1, anim.progress + 0.04);
+            pos = anim.from + (anim.to-anim.from) * easeInOut(anim.progress);
+          } else { pos = anim.to; delete G.pawnAnim[p.id]; }
+        }
+        return { key:p.id, pos, isMine: p.id === G.myId };
+      });
+      const offsets = computeStackOffsets(items);
+      const order = items.slice().sort((a,b) => (a.isMine?1:0) - (b.isMine?1:0));
+      order.forEach(item => {
+        const p = getPlayer(item.key);
+        const off = offsets[item.key] || { dx:0, dy:0, front:true };
+        const t = getTrackPosition(item.pos);
+        const px = t.x*w + off.dx*offR, py = t.y*h + off.dy*offR - rBase*0.5;
+        const emoji = isBotId(item.key) ? '🐘' : (p?.avatar || '🐘');
+        drawPawn(px, py, rBase, emoji, p?.color, item.isMine);
+      });
+    }
+  }
+
+  function isPawnLocked(key){
+    return G.pawnAnimLock && G.pawnAnimLock[key] && Date.now() < G.pawnAnimLock[key];
+  }
+  // Считает «раскрученную вперёд» цель анимации: если новая (свёрнутая по
+  // кругу 0..33) позиция численно МЕНЬШЕ прежней цели — значит, круг
+  // завершился и нужно продолжать считать дальше по кругу, а не ехать
+  // напрямую (что выглядело бы как разворот и путь через всё поле назад).
+  // Движение фишек всегда только вперёд по часовой стрелке.
+  function forwardAnimTarget(prevTo, newWrapped){
+    let target = newWrapped;
+    while (target < prevTo) target += TRACK_TOTAL;
+    return target;
+  }
+
+  function updatePawnPositions(){
+    if (G.gameMode === '2'){
+      if (!isPawnLocked('__common')){
+        const target = forwardAnimTarget(G.animCommon.to, G.commonSlonPosition);
+        if (target !== G.animCommon.to){
+          G.animCommon = { from:G.animCommon.to, to:target, progress:0 };
+        }
+      }
+      if (!isPawnLocked('__mammoth')){
+        const target = forwardAnimTarget(G.animMammoth.to, G.mammothPosition);
+        if (target !== G.animMammoth.to){
+          G.animMammoth = { from:G.animMammoth.to, to:target, progress:0 };
+        }
+      }
+      return;
+    }
+    G.players.forEach(p => {
+      if (isPawnLocked(p.id)){ p._prevPos = p.position; return; }
+      const oldPos = p.position;
+      if (!G.pawnAnim[p.id]){
+        const prev = p._prevPos !== undefined ? p._prevPos : 0;
+        const target = forwardAnimTarget(prev, oldPos);
+        G.pawnAnim[p.id] = { from:prev, to:target, progress:0 };
+      } else {
+        const anim = G.pawnAnim[p.id];
+        const target = forwardAnimTarget(anim.to, oldPos);
+        if (anim.to !== target){
+          const cur = anim.from + (anim.to-anim.from) * easeInOut(anim.progress);
+          anim.from = cur; anim.to = target; anim.progress = 0;
+        }
+      }
+      p._prevPos = oldPos;
+    });
+  }
+
+  // ===================================================================
+  // СЕТЬ (Firebase)
+  // Скрипты Firebase/QRCode грузятся динамически, с таймаутом, а НЕ
+  // обычными блокирующими <script src> тегами. Раньше, если эти внешние
+  // домены были недоступны на текущей сети (например, без VPN), браузер
+  // мог надолго зависнуть в ожидании их загрузки ещё ДО того, как
+  // выполнится хоть одна строчка кода игры — из-за этого не работали
+  // вообще никакие кнопки, включая локальную игру с ботами, которой
+  // сеть не нужна. Теперь игра запускается сразу, а сеть подключается
+  // в фоне и, если её нет, просто не появляется — без какого-либо блока.
+  // ===================================================================
+  let db = null, myUid = null, _myHand = [];
+  let infoConnectedCallback = null;
+  let activeListenerRefs = [];
+  let netAvailable = false;
+
+  // ВАЖНО: раньше грузили скрипт через <script src>. Если домен (Firebase/
+  // QRCode CDN) заблокирован "тихо" — провайдер не рвёт соединение явной
+  // ошибкой, а просто не отвечает (типичная блокировка без VPN) — то ни
+  // onload, ни onerror у такого тега может не наступить вообще никогда.
+  // Наш собственный таймер переставал ЖДАТЬ этот тег на уровне промиса, но
+  // САМ браузер на сетевом уровне (а не только в DOM) мог по-прежнему
+  // считать соединение "ещё устанавливается" сколько угодно долго — потому
+  // что удаление/очистка <script>-тега не гарантированно обрывает уже
+  // начатое TCP/TLS-соединение на всех мобильных браузерах и веб-вью. Из-за
+  // этого индикатор загрузки страницы не доходил до конца, и часть
+  // браузеров при этом ограничивала интерактивность страницы.
+  //
+  // Простой fetch() с AbortController тут не подходит напрямую: он
+  // по-настоящему обрывает соединение при abort(), но gstatic.com (откуда
+  // грузится Firebase SDK) не присылает заголовок Access-Control-Allow-
+  // -Origin, поэтому fetch в режиме 'cors' будет падать с ошибкой CORS
+  // даже при полностью исправной сети — это сломало бы игру всем, а не
+  // только тем, у кого Firebase заблокирован.
+  //
+  // Поэтому делаем в два шага: сначала лёгкий HEAD-запрос в режиме
+  // 'no-cors' — он не требует CORS-заголовков (мы не читаем ответ, только
+  // проверяем сам факт соединения) и при этом по-настоящему прерывается
+  // через AbortController.abort(), в отличие от <script>-тега. И только
+  // если это подключение реально удалось — догружаем сам скрипт обычным
+  // <script src>, который к этому моменту почти наверняка отработает быстро.
+  function probeReachable(url, timeoutMs){
+    return new Promise((resolve) => {
+      let done = false;
+      const controller = new AbortController();
+      const timer = setTimeout(() => {
+        if (!done){ done = true; controller.abort(); resolve(false); }
+      }, timeoutMs);
+      // Cache-busting параметр — чтобы проверочный запрос был отдельным от
+      // последующей реальной загрузки скрипта и не путался с ней в кеше
+      // браузера (на одном и том же URL иногда наблюдалась путаница между
+      // HEAD-ответом проверки и GET-запросом самого скрипта).
+      const probeUrl = url + (url.indexOf('?') === -1 ? '?' : '&') + '_probe=' + Date.now();
+      fetch(probeUrl, { method: 'HEAD', mode: 'no-cors', cache: 'no-store', signal: controller.signal })
+        .then(() => { if (!done){ done = true; clearTimeout(timer); resolve(true); } })
+        .catch(() => { if (!done){ done = true; clearTimeout(timer); resolve(false); } });
+    });
+  }
+
+  function loadScriptWithTimeout(src, timeoutMs){
+    return new Promise((resolve) => {
+      probeReachable(src, timeoutMs).then((reachable) => {
+        if (!reachable){ resolve(false); return; }
+        let done = false;
+        const el = document.createElement('script');
+        // Страховочный таймаут на случай, если сам скрипт всё же не
+        // загрузится быстро, даже когда HEAD-проверка прошла успешно.
+        const safetyTimer = setTimeout(() => {
+          if (!done){ done = true; el.onload = null; el.onerror = null; try{ el.src=''; el.remove(); }catch(e){} resolve(false); }
+        }, 5000);
+        el.onload = () => { if (!done){ done = true; clearTimeout(safetyTimer); resolve(true); } };
+        el.onerror = () => { if (!done){ done = true; clearTimeout(safetyTimer); resolve(false); } };
+        el.src = src;
+        document.head.appendChild(el);
+      });
+    });
+  }
+
+  async function initFirebaseAsync(){
+    try {
+      const okApp = await loadScriptWithTimeout('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js', 6000);
+      if (!okApp) return;
+      const [okAuth, okDb] = await Promise.all([
+        loadScriptWithTimeout('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js', 6000),
+        loadScriptWithTimeout('https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js', 6000),
+      ]);
+      if (!okAuth || !okDb) return;
+      if (typeof firebase !== 'undefined' && FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey.indexOf('ВСТАВЬТЕ') === -1){
+        firebase.initializeApp(FIREBASE_CONFIG);
+        db = firebase.database();
+        netAvailable = true;
+      }
+    } catch(e){ console.error('[Imaginarium] Firebase init error:', e); netAvailable = false; }
+  }
+  // ВАЖНО: Firebase (и QR-код) раньше начинали грузиться сразу при открытии
+  // страницы, ещё до того, как игрок хоть что-то нажал. Это означало, что
+  // "Игра с ботами" тоже неявно зависела от того, доступен ли Firebase —
+  // хотя ботам сеть вообще не нужна. Теперь загрузка Firebase запускается
+  // ТОЛЬКО по требованию: при нажатии "Создать комнату" или "Зайти в
+  // комнату" (см. ensureFirebaseInit ниже). Кнопка "Игра с ботами" эту
+  // функцию не вызывает вообще — при её нажатии никаких сетевых обращений
+  // не происходит.
+  let firebaseReadyPromise = null;
+  function ensureFirebaseInit(){
+    if (!firebaseReadyPromise){
+      firebaseReadyPromise = initFirebaseAsync();
+      // QR-код нужен только когда реально создаём/открываем сетевую комнату —
+      // грузим его тут же, заодно с Firebase, а не заранее.
+      loadScriptWithTimeout('https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js', 6000);
+    }
+    return firebaseReadyPromise;
+  }
+
+  function roomRef(code, path){ return db.ref('rooms/' + code + (path ? '/' + path : '')); }
+  function ensureAuth(){
+    return new Promise((resolve, reject) => {
+      if (!netAvailable){ reject(new Error('Firebase не настроен')); return; }
+      const cur = firebase.auth().currentUser;
+      if (cur){ resolve(cur.uid); return; }
+      const timer = setTimeout(() => reject(new Error('Вход занял слишком много времени')), 12000);
+      firebase.auth().setPersistence(firebase.auth.Auth.Persistence.NONE)
+        .catch(() => {})
+        .then(() => firebase.auth().signInAnonymously())
+        .then(cred => { clearTimeout(timer); resolve(cred.user.uid); })
+        .catch(err => { clearTimeout(timer); reject(err); });
+    });
+  }
+
+  // Иногда первое обращение к серверу (Firebase) на некоторых сетях/операторах
+  // не проходит с первого раза (обрывается на установке соединения), хотя
+  // сам сайт при этом открывается нормально. Повторные попытки почти всегда
+  // помогают без необходимости включать VPN — поэтому оборачиваем создание
+  // и подключение к комнате в несколько автоматических попыток.
+  function withNetworkRetries(taskFn, opts){
+    const attempts = (opts && opts.attempts) || 4;
+    const baseDelayMs = (opts && opts.baseDelayMs) || 1200;
+    const onAttempt = opts && opts.onAttempt;
+    return new Promise((resolve, reject) => {
+      let attempt = 0;
+      function tryOnce(){
+        attempt++;
+        if (onAttempt) onAttempt(attempt, attempts);
+        taskFn().then(resolve).catch(err => {
+          if (attempt >= attempts){ reject(err); return; }
+          setTimeout(tryOnce, baseDelayMs * attempt);
+        });
+      }
+      tryOnce();
+    });
+  }
+
+  let hostListenersAttached = false;
+  function startHostNetworking(){
+    // Ждём итога попытки загрузки Firebase (успех или таймаут), а не проверяем
+    // netAvailable сразу — иначе можно ошибочно решить, что сети нет, только
+    // потому что скрипты ещё не успели догрузиться в фоне. Firebase начинает
+    // грузиться только сейчас, по факту вызова (см. ensureFirebaseInit) — а
+    // не заранее при открытии страницы.
+    ensureFirebaseInit().then(() => {
+      if (!netAvailable){
+        showOfflineRoomNote();
+        return;
+      }
+      withNetworkRetries(() => ensureAuth().then((uid) => {
+        myUid = uid;
+        const code = randomRoomCode(5);
+        G.roomId = code;
+        return roomRef(code, 'state').set(buildPublicSnapshot()).then(() => code);
+      }), {
+        attempts: 4, baseDelayMs: 1200,
+        onAttempt: (n, total) => { if (n === 2) toast('Подключаем мультиплеер... игру с ботами уже можно начинать', 'warn'); }
+      }).then((code) => {
+        updateRoomUI();
+        renderRoomQr();
+        attachHostListeners(code);
+        infoConnectedCallback = (snap) => {
+          if (snap.val() === true){
+            const presenceRef = roomRef(code, 'hostOnline');
+            presenceRef.onDisconnect().set(false);
+            presenceRef.set(true);
+          }
+        };
+        db.ref('.info/connected').on('value', infoConnectedCallback);
+      }).catch((err) => {
+        console.error('[Imaginarium] Firebase ошибка (хост):', err);
+        showOfflineRoomNote();
+      });
+    });
+  }
+
+  // Комната и игра с ботами полностью доступны без сети — сеть нужна только
+  // для приглашения других игроков по коду/QR. Если подключиться не удалось,
+  // явно и без паники объясняем это прямо в комнате, а не просто ругаемся тостом.
+  function showOfflineRoomNote(){
+    document.getElementById('qrBlock').classList.add('hidden');
+    const note = document.getElementById('offlineRoomNote');
+    if (note) note.classList.remove('hidden');
+    toast('Без подключения к интернету — но с ботами играть можно прямо сейчас.', 'warn');
+  }
+
+  function renderRoomQr(){
+    if (typeof QRCode === 'undefined' || !roomQrEl) {
+      console.warn('QRCode library not loaded or roomQrEl missing');
+      return;
+    }
+    const url = buildJoinUrl(G.roomId);
+    roomQrEl.innerHTML = '';
+    try {
+      new QRCode(roomQrEl, { text:url, width:150, height:150, colorDark:'#1a1a2e', colorLight:'#ffffff', correctLevel: QRCode.CorrectLevel.M });
+      qrBlock.style.display = 'block';
+    } catch(e){ console.warn('QR generation error:', e); }
+  }
+  function buildJoinUrl(code){
+    if (location.protocol.indexOf('http') === 0){
+      return location.origin + location.pathname + '?join=' + code;
+    }
+    return code;
+  }
+
+  function attachHostListeners(code){
+    if (hostListenersAttached) return;
+    hostListenersAttached = true;
+    activeListenerRefs = [];
+
+    const joinRef = roomRef(code, 'joinRequests');
+    const joinCb = (snap) => {
+      if (G.gameStarted){ snap.ref.remove(); return; }
+      const req = snap.val();
+      if (!req){ return; }
+      addRealPlayer(snap.key, req.name, req.icon, req.color);
+      syncPlayerNow(snap.key);
+      broadcastState();
+      snap.ref.remove();
+    };
+    joinRef.on('child_added', joinCb);
+    activeListenerRefs.push({ ref:joinRef, event:'child_added', cb:joinCb });
+
+    const actionsRef = roomRef(code, 'actions');
+    const actionsCb = (snap) => {
+      const entry = snap.val();
+      if (entry && entry.playerId) applyRemoteAction(entry.playerId, entry.action, entry.data);
+      snap.ref.remove();
+    };
+    actionsRef.on('child_added', actionsCb);
+    activeListenerRefs.push({ ref:actionsRef, event:'child_added', cb:actionsCb });
+
+    const presenceRef2 = roomRef(code, 'presence');
+    const presenceCb = (snap) => {
+      G.playerPresence = snap.val() || {};
+      if (G.gameStarted) renderGame(); else updateRoomUI();
+    };
+    presenceRef2.on('value', presenceCb);
+    activeListenerRefs.push({ ref:presenceRef2, event:'value', cb:presenceCb });
+  }
+
+  function addRealPlayer(id, name, icon, color){
+    if (!id || getPlayer(id) || G.gameStarted) return;
+    const idx = G.players.length;
+    const p = {
+      id,
+      name: (name || 'Игрок').toString().trim().slice(0,12) || 'Игрок',
+      score:0, cards:[], position:0,
+      color: color || COLORS[idx % COLORS.length],
+      avatar: icon || AVATAR_ICONS[idx % AVATAR_ICONS.length],
+    };
+    G.players.push(p);
+    // Карты раздавать здесь не нужно: колода на этот момент может быть ещё
+    // не выбрана (пустая) — тогда в руку попадут "пустые" значения вместо
+    // карт, которые потом застрянут в сбросе. Руки всё равно полностью
+    // пересдаются при старте игры (actuallyStartGame -> dealAllPlayers).
+    updateRoomUI();
+    toast(`${p.name} подключился к комнате`, 'success');
+  }
+
+  function buildPublicSnapshot(){
+    return {
+      players: G.players.map(p => ({
+        id:p.id, name:p.name, score:p.score, position:p.position,
+        color:p.color, avatar:p.avatar, cardCount:(p.cards||[]).length,
+      })),
+      botPlayers: G.botPlayers.slice(),
+      currentLeaderIndex:G.currentLeaderIndex, turn:G.turn, phase:G.phase,
+      association:G.association, votes:{...G.votes}, votes2:{...G.votes2},
+      leaderCardIndex:G.leaderCardIndex, playedCards:G.playedCards.map(c=>({...c})),
+      placedPlayers:G.placedPlayers.slice(), leaderCard:G.leaderCard, mammothCard:G.mammothCard,
+      gameMode:G.gameMode, gameStarted:G.gameStarted, gameOver:G.gameOver, stopReason:G.stopReason,
+      awaitingContinueDecision:G.awaitingContinueDecision, finishInfo:G.finishInfo, finishInfoPlayerId:G.finishInfoPlayerId,
+      mammothPosition:G.mammothPosition, commonSlonPosition:G.commonSlonPosition,
+      lastResult:G.lastResult, pendingRawCommon:G.pendingRawCommon, pendingRawMammoth:G.pendingRawMammoth,
+      roomId:G.roomId,
+      selectedDeckIds:(G.selectedDeckIds||[]).slice(),
+      awaitingDeckDecision:G.awaitingDeckDecision, deckDecisionInfo:G.deckDecisionInfo,
+      deckSwitchPickerOpen:G.deckSwitchPickerOpen,
+      showField:G.showField,
+    };
+  }
+  function broadcastState(){
+    if (!G.isRoomHost || !netAvailable || !G.roomId || G.roomId === '—') return;
+    roomRef(G.roomId, 'state').set(buildPublicSnapshot()).catch(e => console.error('[Imaginarium] ошибка синхронизации:', e));
+  }
+  function syncPlayerNow(playerId){
+    if (!netAvailable || !G.roomId || G.roomId === '—') return;
+    const p = getPlayer(playerId);
+    roomRef(G.roomId, 'hands/' + playerId).set(p ? (p.cards||[]) : []).catch(e => console.error('[Imaginarium] ошибка синхронизации руки:', e));
+  }
+  function syncAllHands(){
+    if (!G.isRoomHost) return;
+    G.players.forEach(p => { if (p.id !== HOST_ID && !isBotId(p.id)) syncPlayerNow(p.id); });
+  }
+
+  function applyRemoteAction(playerId, action, data){
+    data = data || {};
+    const prevActive = G.activePlayerId;
+    switch(action){
+      case 'submitAssociation':
+        G.activePlayerId = playerId; G.selectedCardIndex = data.cardIndex;
+        Game.submitAssociation(data.association || '');
+        break;
+      case 'submitAssociation2':
+        G.activePlayerId = playerId;
+        Game.submitAssociation2(data.association || '');
+        break;
+      case 'submitCard':
+        G.activePlayerId = playerId; G.selectedCardForPlayer[playerId] = data.cardIndex;
+        Game.submitCard();
+        break;
+      case 'submitCards2':
+        G.activePlayerId = playerId; G.selectedCards2[playerId] = (data.cardIndexes || []).slice();
+        Game.submitCards2();
+        break;
+      case 'submitVote':
+        G.activePlayerId = playerId; G.selectedVoteForPlayer[playerId] = data.cardIndex;
+        Game.submitVote();
+        break;
+      case 'submitVote2':
+        G.activePlayerId = playerId; G.selectedVoteForPlayer[playerId] = data.cardIndex;
+        Game.submitVote2();
+        break;
+      case 'leave':
+        G.activePlayerId = prevActive;
+        removePlayer(playerId);
+        return;
+    }
+    G.activePlayerId = prevActive;
+  }
+
+  let _hasJoinedRoom = false;
+  let _joinWaitTimer = null;
+
+  function connectToRoom(code, onDone){
+    // Как и при создании комнаты — сначала дожидаемся итога попытки
+    // загрузки Firebase, а не проверяем netAvailable сразу. Загрузка
+    // Firebase запускается прямо здесь, по факту вызова.
+    ensureFirebaseInit().then(() => {
+      if (!netAvailable){ toast('Нет связи для подключения по коду — попробуйте ещё раз или проверьте интернет.', 'warn'); onDone && onDone(false); return; }
+      withNetworkRetries(() => ensureAuth().then((uid) => {
+      myUid = uid;
+      return roomRef(code, 'state').once('value').then((snap) => {
+        if (!snap.exists()){ toast('Комната с таким кодом не найдена', 'warn'); onDone && onDone(false); return; }
+        const remoteState = snap.val();
+        if (remoteState.gameStarted){ toast('Игра уже началась — подключение новых игроков закрыто', 'warn'); onDone && onDone(false); return; }
+        G.myId = uid; G.isHost = false; G.isRoomHost = false; G.roomId = code;
+        _hasJoinedRoom = false;
+        return roomRef(code, 'joinRequests/' + uid).set({
+          name: profile.name || 'Игрок', icon:profile.icon, color:profile.color, ts:Date.now(),
+        }).then(() => {
+          attachPlayerListeners(code, uid);
+          if (_joinWaitTimer) clearTimeout(_joinWaitTimer);
+          _joinWaitTimer = setTimeout(() => {
+            if (!_hasJoinedRoom){
+              toast('Хост не подтвердил подключение. Попробуйте ещё раз.', 'warn');
+              stopNetworking();
+              fullResetToLanding();
+            }
+          }, 10000);
+          onDone && onDone(true);
+        });
+      });
+    }), {
+      attempts: 4, baseDelayMs: 1200,
+      onAttempt: (n, total) => { if (n > 1) toast(`Не удалось подключиться, пробуем ещё раз (${n} из ${total})...`, 'warn'); }
+    }).catch((err) => {
+      console.error('[Imaginarium] Firebase ошибка (игрок):', err);
+      toast('Не удалось подключиться после нескольких попыток: ' + (err && err.message || err), 'warn');
+      onDone && onDone(false);
+    });
+    });
+  }
+
+  let playerListenersAttached = false;
+  function attachPlayerListeners(code, uid){
+    if (playerListenersAttached) return;
+    playerListenersAttached = true;
+    activeListenerRefs = [];
+
+    const stateRef = roomRef(code, 'state');
+    const stateCb = (snap) => {
+      if (G.roomId !== code) return;
+      const remote = snap.val();
+      if (!remote){
+        toast('Комната закрыта хостом', 'warn');
+        stopNetworking();
+        fullResetToLanding();
+        return;
+      }
+      applyRemoteState(remote, _myHand);
+    };
+    stateRef.on('value', stateCb);
+    activeListenerRefs.push({ ref:stateRef, event:'value', cb:stateCb });
+
+    const handRef = roomRef(code, 'hands/' + uid);
+    const handCb = (snap) => {
+      if (G.roomId !== code) return;
+      _myHand = snap.val() || [];
+      const me = G.players.find(p => p.id === G.myId);
+      if (me){
+        me.cards = _myHand;
+        if (G.gameStarted) renderGame(); else updateRoomUI();
+      }
+    };
+    handRef.on('value', handCb);
+    activeListenerRefs.push({ ref:handRef, event:'value', cb:handCb });
+
+    const hostOnlineRef = roomRef(code, 'hostOnline');
+    const hostOnlineCb = (snap) => {
+      if (G.roomId !== code) return;
+      if (snap.exists() && snap.val() === false) toast('Хост отключился от комнаты', 'warn');
+    };
+    hostOnlineRef.on('value', hostOnlineCb);
+    activeListenerRefs.push({ ref:hostOnlineRef, event:'value', cb:hostOnlineCb });
+
+    infoConnectedCallback = (snap) => {
+      if (G.roomId !== code) return;
+      if (snap.val() === true){
+        const presenceRef = roomRef(code, 'presence/' + uid);
+        presenceRef.onDisconnect().set('offline');
+        presenceRef.set('online');
+      }
+    };
+    db.ref('.info/connected').on('value', infoConnectedCallback);
+  }
+
+  function applyRemoteState(remote, myHand){
+    const phaseChanged = G.phase !== remote.phase;
+    const oldById = {}; G.players.forEach(p => { oldById[p.id] = p; });
+    G.players = (remote.players || []).map(p => {
+      const old = oldById[p.id];
+      return { ...p, cards: p.id===G.myId ? (myHand||[]) : [], _prevPos: old ? old._prevPos : undefined };
+    });
+    G.botPlayers = remote.botPlayers || [];
+    G.currentLeaderIndex = remote.currentLeaderIndex;
+    G.turn = remote.turn;
+    G.phase = remote.phase;
+    G.association = remote.association;
+    G.votes = remote.votes || {};
+    G.votes2 = remote.votes2 || {};
+    G.leaderCardIndex = remote.leaderCardIndex;
+    G.playedCards = remote.playedCards || [];
+    G.placedPlayers = remote.placedPlayers || [];
+    G.leaderCard = remote.leaderCard;
+    G.mammothCard = remote.mammothCard;
+    G.gameMode = remote.gameMode;
+    G.gameStarted = remote.gameStarted;
+    G.gameOver = remote.gameOver;
+    G.stopReason = remote.stopReason;
+    G.awaitingContinueDecision = remote.awaitingContinueDecision;
+    G.finishInfo = remote.finishInfo;
+    G.finishInfoPlayerId = remote.finishInfoPlayerId;
+    G.mammothPosition = remote.mammothPosition;
+    G.commonSlonPosition = remote.commonSlonPosition;
+    G.lastResult = remote.lastResult;
+    G.pendingRawCommon = remote.pendingRawCommon;
+    G.pendingRawMammoth = remote.pendingRawMammoth;
+    G.roomId = remote.roomId || G.roomId;
+    G.selectedDeckIds = remote.selectedDeckIds || G.selectedDeckIds;
+    G.awaitingDeckDecision = remote.awaitingDeckDecision;
+    G.deckDecisionInfo = remote.deckDecisionInfo;
+    G.deckSwitchPickerOpen = remote.deckSwitchPickerOpen;
+    G.showField = !!remote.showField;
+
+    G.activePlayerId = G.myId;
+
+    if (phaseChanged){
+      G.selectedCardIndex = -1;
+      G.selectedCardForPlayer = {};
+      G.selectedVoteForPlayer = {};
+      G.selectedCards2 = {};
+      G.associationInput = '';
+    }
+
+    const amIPresent = G.players.some(p => p.id === G.myId);
+    if (amIPresent){
+      _hasJoinedRoom = true;
+      if (_joinWaitTimer){ clearTimeout(_joinWaitTimer); _joinWaitTimer = null; }
+    }
+
+    if (!amIPresent){
+      if (_hasJoinedRoom){
+        toast('Вы больше не в этой игре', 'warn');
+        stopNetworking();
+        fullResetToLanding();
+      }
+      return;
+    }
+
+    if (G.gameStarted){ closeDeckLobbyBrowser(); closeDeckContentView(); showScreen('screenGame'); renderGame(); }
+    else { showScreen('screenRoom'); updateRoomUI(); }
+  }
+
+  function closeRoomInFirebase(){
+    if (netAvailable && db && G.roomId && G.roomId !== '—'){
+      try { db.ref('rooms/'+G.roomId).remove(); } catch(e){}
+    }
+  }
+
+  function stopNetworking(){
+    activeListenerRefs.forEach(({ ref, event, cb }) => {
+      try { ref.off(event, cb); } catch(e){}
+    });
+    activeListenerRefs = [];
+    if (infoConnectedCallback){
+      try { db.ref('.info/connected').off('value', infoConnectedCallback); } catch(e){}
+      infoConnectedCallback = null;
+    }
+    if (netAvailable && db && myUid && G.roomId && G.roomId !== '—'){
+      try { db.ref('rooms/'+G.roomId+'/presence/'+myUid).remove(); } catch(e){}
+    }
+    myUid = null;
+    hostListenersAttached = false;
+    playerListenersAttached = false;
+  }
+
+  function sendAction(type, data){
+    if (!netAvailable || !myUid || !G.roomId || G.roomId === '—'){ toast('Нет соединения с хостом', 'warn'); return; }
+    roomRef(G.roomId, 'actions').push({ playerId:myUid, action:type, data:data||{}, ts:Date.now() })
+      .catch(e => { console.error('[Imaginarium] ошибка отправки действия:', e); toast('Не удалось отправить действие', 'warn'); });
+  }
+
+  // ===================================================================
+  // УПРАВЛЕНИЕ КОМНАТОЙ
+  // ===================================================================
+  function createHostAndShowRoom(){
+    const name = profile.name || 'Хост';
+    G.myId = HOST_ID;
+    G.isHost = true;
+    G.isRoomHost = true;
+    G.players = [{ id:HOST_ID, name, score:0, cards:[], position:0, color:profile.color, avatar:profile.icon }];
+    G.botPlayers = [];
+    G.activePlayerId = HOST_ID;
+    G.gameStarted = false;
+    G.deck = shuffle(buildPoolFromDecks(G.selectedDeckIds, new Set()));
+    G.discard = [];
+    G.pawnAnim = {};
+    G.pawnAnimLock = {};
+    G.animCommon = { from:0, to:0, progress:1 };
+    G.animMammoth = { from:0, to:0, progress:1 };
+    G.showField = false;
+    if (G.fieldTimer) clearTimeout(G.fieldTimer);
+    G.fieldTimer = null;
+    showScreen('screenRoom');
+    updateRoomUI();
+  }
+
+  function addBot(){
+    if (!G.isRoomHost) return;
+    if (G.gameStarted){ toast('Нельзя добавить игрока: игра уже началась.', 'warn'); return; }
+    const idx = G.players.length;
+    const botId = 'bot_' + Date.now() + '_' + idx;
+    const color = COLORS[idx % COLORS.length];
+    const bot = { id:botId, name:'Бот ' + (idx), score:0, cards:[], position:0, color };
+    G.players.push(bot);
+    G.botPlayers.push(botId);
+    // Карты раздавать здесь не нужно (и вредно): колода на этот момент может
+    // быть ещё не выбрана — тогда в руку попадут "пустые" значения вместо
+    // карт вместо этого, а руки всё равно полностью пересдаются при старте
+    // игры (actuallyStartGame -> dealAllPlayers).
+    updateRoomUI();
+    toast(`${bot.name} присоединился к комнате`, 'success');
+  }
+
+  function clearAllBots(){
+    if (!G.isRoomHost) return;
+    const bots = G.botPlayers.slice();
+    bots.forEach(id => removePlayer(id, { silent:true }));
+    if (bots.length) toast('Все боты удалены из комнаты', 'info');
+    updateRoomUI();
+  }
+
+  function removePlayer(playerId, opts){
+    opts = opts || {};
+    const player = getPlayer(playerId);
+    if (!player) return;
+
+    G.playedCards = G.playedCards.filter(c => c.playerId !== playerId);
+    G.placedPlayers = G.placedPlayers.filter(id => id !== playerId);
+    delete G.votes[playerId];
+    delete G.votes2[playerId];
+    delete G.selectedCardForPlayer[playerId];
+    delete G.selectedVoteForPlayer[playerId];
+    delete G.selectedCards2[playerId];
+    delete G.pawnAnim[playerId];
+    if (player.cards && player.cards.length) G.discard.push(...player.cards.filter(Boolean));
+
+    if (G.isRoomHost && netAvailable && !isBotId(playerId) && playerId !== HOST_ID && G.roomId && G.roomId !== '—'){
+      try { db.ref('rooms/'+G.roomId+'/presence/'+playerId).remove(); } catch(e){}
+      try { db.ref('rooms/'+G.roomId+'/hands/'+playerId).remove(); } catch(e){}
+    }
+
+    const wasLeader = getLeader()?.id === playerId;
+    const leaderIdBefore = getLeader()?.id;
+
+    G.players = G.players.filter(p => p.id !== playerId);
+    G.botPlayers = G.botPlayers.filter(id => id !== playerId);
+
+    if (leaderIdBefore && leaderIdBefore !== playerId){
+      const idx = G.players.findIndex(p => p.id === leaderIdBefore);
+      if (idx !== -1) G.currentLeaderIndex = idx;
+    }
+
+    if (G.activePlayerId === playerId){
+      focusPlayer(G.players[0]?.id || HOST_ID);
+    }
+
+    if (!opts.silent) toast(`${player.name} покинул игру`, 'info');
+
+    if (!G.gameStarted){
+      updateRoomUI();
+      return;
+    }
+
+    handlePlayerCountChangeMidGame(wasLeader);
+  }
+
+  function handlePlayerCountChangeMidGame(wasLeader){
+    const count = G.players.length;
+    const minRequired = G.gameMode === '2' ? 2 : 3;
+    if (count < minRequired){
+      G.gameOver = true;
+      G.phase = 'stopped';
+      G.stopReason = count <= 1
+        ? 'Недостаточно игроков для продолжения.'
+        : 'Осталось 2 игрока — режим для двоих использует другие правила, автоматически продолжить нельзя.';
+      toast('Игра остановлена: ' + G.stopReason, 'warn');
+      renderGame();
+      return;
+    }
+    if (count === 3 && G.gameMode === '4plus'){
+      G.gameMode = '3';
+      toast('Остался 3 игрок — режим переключён на «3 игрока» (правила похожи).', 'info');
+    }
+    if (wasLeader && (G.phase === 'association' || G.phase === 'placing' || G.phase === 'voting')){
+      toast('Ведущий покинул игру — раунд прерван, начинается новый ход.', 'warn');
+      abortRoundAndAdvance();
+      return;
+    }
+    renderGame();
+  }
+
+  function abortRoundAndAdvance(){
+    G.playedCards.forEach(item => { if (item.card) G.discard.push(item.card); });
+    if (G.leaderCard) G.discard.push(G.leaderCard);
+    if (G.mammothCard) G.discard.push(G.mammothCard);
+    G.playedCards = [];
+    G.leaderCard = null;
+    G.mammothCard = null;
+    G.placedPlayers = [];
+    G.votes = {}; G.votes2 = {};
+    G.selectedCardForPlayer = {}; G.selectedVoteForPlayer = {}; G.selectedCards2 = {};
+    G.leaderCardIndex = -1;
+    G.association = ''; G.associationInput = '';
+    G.selectedCardIndex = -1;
+    if (G.currentLeaderIndex >= G.players.length) G.currentLeaderIndex = 0;
+    G.turn++;
+    G.phase = 'association';
+    focusPlayer(getLeader()?.id || G.players[0]?.id || HOST_ID);
+    G.showField = false;
+    if (G.fieldTimer) clearTimeout(G.fieldTimer);
+    G.fieldTimer = null;
+    // Как и при обычном переходе хода — сначала убеждаемся, что карт хватит
+    // на добор рук, иначе показываем тот же явный выбор колоды, а не тихо
+    // раздаём неполные руки.
+    if (!ensureEnoughCards('refillOnly')) return;
+    refillHandsRoundRobin(G.players);
+    renderGame();
+  }
+
+  function fullResetToLanding(){
+    if (G.isRoomHost) closeRoomInFirebase();
+    stopNetworking();
+    G = {
+      players: [], botPlayers: [], currentLeaderIndex:0, turn:0, phase:'setup',
+      association:'', associationInput:'', votes:{}, votes2:{}, leaderCardIndex:-1,
+      playedCards:[], selectedCardIndex:-1, selectedCardForPlayer:{}, selectedVoteForPlayer:{}, selectedCards2:{},
+      placedPlayers:[], leaderCard:null, mammothCard:null,
+      myId:HOST_ID, isHost:true, isRoomHost:true, roomId:'—', gameMode:'4plus', gameStarted:false,
+      gameOver:false, stopReason:'', awaitingContinueDecision:false, finishInfo:null, finishInfoPlayerId:null,
+      pendingRawCommon:null, pendingRawMammoth:null,
+      selectedDeckIds:[], awaitingDeckDecision:false, deckDecisionInfo:null,
+      deckSwitchPickerOpen:false, pendingAdvanceMode2:false, playerPresence:{},
+      mammothPosition:0, commonSlonPosition:0,
+      activePlayerId:null, pawnAnim:{}, pawnAnimLock:{},
+      animCommon:{from:0,to:0,progress:1}, animMammoth:{from:0,to:0,progress:1},
+      deck: shuffle(buildPoolFromDecks(['baza','x'], new Set())), discard:[], lastResult:null,
+      showField:false, fieldTimer:null,
+    };
+    qrBlock.style.display = 'none';
+    showScreen('screenIntro');
+    toast('Комната закрыта. Прогресс сброшен.', 'info');
+  }
+
+  function resetGameKeepPlayers(){
+    G.currentLeaderIndex = 0;
+    G.turn = 0;
+    G.phase = 'waiting';
+    G.association = ''; G.associationInput = '';
+    G.votes = {}; G.votes2 = {};
+    G.leaderCardIndex = -1;
+    G.playedCards = [];
+    G.selectedCardIndex = -1;
+    G.selectedCardForPlayer = {}; G.selectedVoteForPlayer = {}; G.selectedCards2 = {};
+    G.mammothPosition = 0; G.commonSlonPosition = 0;
+    G.gameOver = false; G.stopReason = '';
+    G.awaitingContinueDecision = false; G.finishInfo = null; G.finishInfoPlayerId = null;
+    G.pendingRawCommon = null; G.pendingRawMammoth = null;
+    G.awaitingDeckDecision = false; G.deckDecisionInfo = null; G.deckDecisionAfterAction = null;
+    G.deckSwitchPickerOpen = false; G.pendingAdvanceMode2 = false;
+    G.placedPlayers = [];
+    G.leaderCard = null; G.mammothCard = null;
+    G.gameMode = '4plus';
+    G.gameStarted = false;
+    G.pawnAnim = {};
+    G.pawnAnimLock = {};
+    G.deck = shuffle(buildPoolFromDecks(G.selectedDeckIds, new Set()));
+    G.discard = [];
+    G.animCommon = { from:0, to:0, progress:1 };
+    G.animMammoth = { from:0, to:0, progress:1 };
+    G.lastResult = null;
+    G.showField = false;
+    if (G.fieldTimer) clearTimeout(G.fieldTimer);
+    G.fieldTimer = null;
+
+    G.players.forEach(p => { p.score = 0; p.position = 0; p._prevPos = 0; p.cards = []; });
+    dealAllPlayers();
+    G.myId = HOST_ID; G.isHost = true;
+
+    showScreen('screenRoom');
+    updateRoomUI();
+    toast('Игра сброшена. Игроки остались в комнате — можно подключать или убирать их.', 'success');
+  }
+
+  // ===================================================================
+  // РЕНДЕРЫ
+  // ===================================================================
+  function updateRoomUI(){
+    const host = getPlayer(HOST_ID);
+    document.getElementById('roomIdDisplay').textContent = G.roomId;
+    document.getElementById('roomIdDisplay').classList.toggle('hidden', !G.isRoomHost);
+    document.getElementById('qrBlock').classList.toggle('hidden', !G.isRoomHost);
+    const playersList = document.getElementById('playersList');
+    playersList.innerHTML = '';
+    G.players.forEach(p => {
+      const tag = document.createElement('span');
+      tag.className = 'player-tag';
+      tag.style.borderLeftColor = p.color;
+      const isBot = isBotId(p.id);
+      const isHostPlayer = p.id === HOST_ID;
+      const isOffline = G.playerPresence && G.playerPresence[p.id] === 'offline';
+      if (isOffline) tag.style.opacity = '.5';
+      tag.innerHTML = `
+        <span style="color:${p.color}; font-weight:700;">${isBot ? '' : (p.avatar || '🐘') + ' '}${escapeHtml(p.name)}</span>
+        ${isHostPlayer ? '🖥️' : ''}
+        ${isBot ? '🤖' : ''}
+        ${isOffline ? '📴' : ''}
+        <span class="score-badge">${p.score || 0}</span>
+        ${(G.isRoomHost && !isHostPlayer) ? '<span class="remove-x" data-remove="'+p.id+'">✕</span>' : ''}
+      `;
+      playersList.appendChild(tag);
+    });
+    playersList.querySelectorAll('[data-remove]').forEach(el => {
+      el.addEventListener('click', () => removePlayer(el.getAttribute('data-remove')));
+    });
+
+    document.getElementById('startGameBtn').classList.toggle('hidden', !G.isRoomHost);
+    document.getElementById('startGameBtn').disabled = G.players.length < 2;
+    document.getElementById('deckBrowseBtn').classList.toggle('hidden', G.isRoomHost);
+    document.getElementById('waitingForHostNote').classList.toggle('hidden', G.isRoomHost);
+    document.getElementById('roomHostPanel').classList.toggle('hidden', !G.isRoomHost);
+    if (G.isRoomHost) {
+      document.getElementById('addBotBtnGlobal').disabled = false;
+      document.getElementById('clearBotsBtnGlobal').disabled = G.botPlayers.length === 0;
+    }
+    refreshRoleUI();
+    if (G.isRoomHost){ broadcastState(); syncAllHands(); }
+  }
+
+  function refreshRoleUI(){
+    document.getElementById('resetGameBtn').classList.toggle('hidden', !G.isRoomHost);
+    document.getElementById('exitGameBtn').textContent = G.isRoomHost ? '🚪 Выйти и закрыть комнату' : '🚪 Покинуть игру';
+  }
+
+  function renderGame(){
+    if (G.showField || manualFieldView) {
+      fieldContainer.classList.add('visible');
+    } else {
+      fieldContainer.classList.remove('visible');
+    }
+    fieldContainer.classList.toggle('overlay-mode', manualFieldView);
+    document.getElementById('fieldCloseBtn').classList.toggle('hidden', !manualFieldView);
+    renderPlayersPanel();
+    renderPlayerWindow();
+    updatePawnPositions();
+    if (G.isRoomHost){ broadcastState(); syncAllHands(); }
+  }
+
+  function renderPlayersPanel(){
+    const panel = document.getElementById('playersPanel');
+    panel.innerHTML = '';
+    G.players.forEach(p => {
+      const div = document.createElement('div');
+      div.className = 'player-avatar';
+      if (p.id === G.activePlayerId) div.classList.add('active');
+      if (p.id === getLeader()?.id) div.classList.add('leader');
+      if (isBotId(p.id)) div.classList.add('bot');
+      if (p.id === HOST_ID) div.classList.add('is-host');
+      const isOffline = G.playerPresence && G.playerPresence[p.id] === 'offline';
+      if (isOffline) div.classList.add('offline');
+      div.style.borderColor = p.color;
+
+      const statusDot = getPlayerActionStatus(p.id);
+      const canRemove = G.isRoomHost && p.id !== HOST_ID;
+
+      div.innerHTML = `
+        <span class="emoji-big">${isBotId(p.id) ? '🤖' : (p.avatar || '🐘')}</span>
+        <span class="name">${escapeHtml(p.name)}</span>
+        ${isOffline ? `<span class="offline-badge" title="Не в сети">📴</span>` : ''}
+        ${statusDot ? `<span class="status-dot ${statusDot.cls}">${statusDot.icon}</span>` : ''}
+        ${canRemove ? `<span class="leave-x" data-leave="${p.id}">✕</span>` : ''}
+      `;
+      div.addEventListener('click', (e) => {
+        if (e.target.closest('[data-leave]')) return;
+        if (!G.isRoomHost) return;
+        if (p.id !== HOST_ID && !isBotId(p.id)){
+          toast('У этого игрока своё устройство — переключиться на его экран нельзя', 'info');
+          return;
+        }
+        if (G.activePlayerId !== p.id){
+          G.activePlayerId = p.id;
+          setViewer(p.id);
+          renderGame();
+        }
+      });
+      panel.appendChild(div);
+    });
+    panel.querySelectorAll('[data-leave]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = el.getAttribute('data-leave');
+        const p = getPlayer(id);
+        if (!p) return;
+        if (!G.isRoomHost){ toast('Убирать других игроков может только хост', 'warn'); return; }
+        showConfirm(`Убрать ${p.name} из игры? Очки сгорят.`, () => removePlayer(id));
+      });
+    });
+  }
+
+  function setViewer(playerId){
+    G.myId = playerId;
+    G.isHost = (playerId === HOST_ID);
+    refreshRoleUI();
+  }
+
+  function focusPlayer(playerId){
+    if (playerId === HOST_ID || isBotId(playerId)){
+      G.activePlayerId = playerId;
+    } else {
+      G.activePlayerId = HOST_ID;
+    }
+  }
+
+  function getPlayerActionStatus(id){
+    const leader = getLeader();
+    if (!leader || G.gameOver) return null;
+    if (G.phase === 'placing'){
+      if (G.gameMode === '2'){
+        const sel = G.selectedCards2[id] || [];
+        if (G.placedPlayers.includes(id)) return { cls:'done', icon:'✓' };
+        return { cls:'pending', icon:'…' };
+      }
+      if (id === leader.id) return null;
+      if (G.placedPlayers.includes(id)) return { cls:'done', icon:'✓' };
+      return { cls:'pending', icon:'…' };
+    }
+    if (G.phase === 'voting'){
+      if (G.gameMode !== '2' && id === leader.id) return null;
+      const votes = G.gameMode === '2' ? G.votes2 : G.votes;
+      if (votes[id] !== undefined) return { cls:'done', icon:'✓' };
+      return { cls:'pending', icon:'…' };
+    }
+    return null;
+  }
+
+  // ====== РЕНДЕР ОКНА ИГРОКА ======
+  function renderPlayerWindow(){
+    const active = getActivePlayer();
+    if (!active){
+      document.getElementById('windowContent').innerHTML = '<div class="info-text">Выберите игрока на панели слева</div>';
+      return;
+    }
+
+    let html = '';
+    const phase = G.phase;
+    const leader = getLeader();
+    const isLeader = leader && active.id === leader.id;
+
+    // Диалог выбора колоды показываем поверх ЛЮБОЙ фазы — не только после
+    // голосования (например, раунд мог прерваться из-за ухода ведущего
+    // как раз в момент нехватки карт).
+    if (G.awaitingDeckDecision){
+      html = renderDeckDecisionHtml();
+      document.getElementById('windowContent').innerHTML = html;
+      bindPhaseHandlers(phase, active, leader, isLeader);
+      return;
+    }
+
+    // Игру можно закончить не только после финиша, но и прямо с экрана
+    // решения по колоде — экран окончания игры тоже показываем поверх любой фазы.
+    if (G.gameOver && phase !== 'result'){
+      html = `<div class="announce">${getWinnerAnnouncementHtml()}</div>` + getFinalStandingsHtml();
+      document.getElementById('windowContent').innerHTML = html;
+      bindPhaseHandlers(phase, active, leader, isLeader);
+      return;
+    }
+
+    if (phase === 'stopped'){
+      html = `<div class="info-text warn">⛔ ${escapeHtml(G.stopReason || 'Игра остановлена.')}</div>`;
+      if (G.isRoomHost){
+        html += `<div class="info-text">Хост может сбросить игру, чтобы подключить нужное число игроков и начать заново.</div>`;
+      } else {
+        html += `<div class="info-text">Ожидайте решения хоста.</div>`;
+      }
+    }
+    else if (phase === 'waiting'){
+      html = `<div class="info-text">Ожидание начала игры...</div>`;
+    }
+    else if (phase === 'association'){
+      if (isLeader) {
+        if (G.gameMode === '2') {
+          // Режим на двоих: ведущий придумывает ассоциацию НЕ глядя в
+          // свои карты — выбора карты на этом шаге нет вообще (карты обе
+          // стороны выберут позже, на шаге "placing").
+          html = `<div class="announce">Придумайте ассоциацию, не глядя в свои карты</div>`;
+          html += `<div class="input-group" style="width:100%;"><input type="text" id="assocInput2" class="input-big" placeholder="Ассоциация" value="${escapeHtml(G.associationInput)}"></div>`;
+          html += `<button class="btn action-btn" id="submitAssocBtn2">📨 Отправить</button>`;
+        } else {
+          // Ведущий – теперь как у игрока по размеру (big-sub), но с градиентом
+          html = `<div class="announce">Придумайте ассоциацию и выберите карту</div>`;
+          html += `<div class="input-group" style="width:100%;"><input type="text" id="assocInput" class="input-big" placeholder="Ассоциация" value="${escapeHtml(G.associationInput)}"></div>`;
+          html += `<div class="card-grid">`;
+          (active.cards || []).forEach((card, idx) => {
+            const sel = G.selectedCardIndex === idx ? 'selected' : '';
+            html += `<div class="card ${sel}" data-card-index="${idx}" onclick="Game.selectLeaderCard(${idx})">`;
+            html += cardFaceHtml(card);
+            html += `<button class="view-btn" onclick="event.stopPropagation(); openCardViewer(window.getMyHandForViewer(), ${idx})">🔍</button>`;
+            html += `</div>`;
+          });
+          html += `</div>`;
+          html += `<button class="btn action-btn" id="submitAssocBtn" ${G.selectedCardIndex===-1?'disabled':''}>📨 Отправить</button>`;
+        }
+      } else {
+        // Игрок – обычный серый текст
+        const leaderName = leader ? colorPlayerName(leader.id) : '—';
+        html = `<div class="announce">Ведущий ${leaderName} загадывает ассоциацию. Ожидайте...</div>`;
+        // Предпросмотр своей руки, пока ведущий думает — актуально только
+        // для обычных режимов; в режиме на двоих карты для этого раунда
+        // ещё даже не имеют смысла показывать так (там другие правила
+        // выбора карт на шаге "placing"), поэтому здесь не показываем.
+        if (G.gameMode !== '2') {
+          html += `<div class="card-grid" style="margin-top:16px;">`;
+          (active.cards || []).forEach((card, idx) => {
+            html += `<div class="card no-select" onclick="openCardViewer(window.getMyHandForViewer(), ${idx})">`;
+            html += cardFaceHtml(card);
+            html += `<button class="view-btn" onclick="event.stopPropagation(); openCardViewer(window.getMyHandForViewer(), ${idx})">🔍</button>`;
+            html += `</div>`;
+          });
+          html += `</div>`;
+        }
+      }
+    }
+    else if (phase === 'placing'){
+      const isMode2 = G.gameMode === '2';
+      if (isMode2) {
+        if (G.placedPlayers.includes(active.id)) {
+          const notPlaced = G.players.filter(p => !G.placedPlayers.includes(p.id));
+          const waitMsg = notPlaced.length ? `Ожидайте: ${notPlaced.map(p=>colorPlayerName(p.id)).join(', ')}` : 'Ожидайте остальных игроков.';
+          html = `<div class="info-text success">✅ Вы выбрали карты. ${waitMsg}</div>`;
+          html += `<div class="card-grid">`;
+          (active.cards || []).forEach((card, idx) => {
+            html += `<div class="card no-select" onclick="openCardViewer(window.getMyHandForViewer(), ${idx})">${cardFaceHtml(card)}<button class="view-btn" onclick="event.stopPropagation(); openCardViewer(window.getMyHandForViewer(), ${idx})">🔍</button></div>`;
+          });
+          html += `</div>`;
+        } else {
+          const assocText = G.association ? ` «${escapeHtml(G.association)}»` : '';
+          html = `<div class="announce">🎯 Выберите 2 карты под ассоциацию${assocText}</div>`;
+          const selected = G.selectedCards2[active.id] || [];
+          html += `<div class="card-grid">`;
+          (active.cards || []).forEach((card, idx) => {
+            const sel = selected.includes(idx) ? 'selected' : '';
+            html += `<div class="card ${sel}" onclick="Game.toggleCard2(${idx})">`;
+            html += cardFaceHtml(card);
+            html += `<button class="view-btn" onclick="event.stopPropagation(); openCardViewer(window.getMyHandForViewer(), ${idx})">🔍</button>`;
+            html += `</div>`;
+          });
+          html += `</div>`;
+          html += `<button class="btn btn-success action-btn" id="submitCardBtn2" ${selected.length<2?'disabled':''}>📤 Отправить (${selected.length}/2)</button>`;
+        }
+      } else {
+        if (isLeader) {
+          const others = G.players.filter(p => p.id !== leader.id);
+          const placed = G.placedPlayers.length, total = others.length;
+          if (placed >= total) {
+            html = `<div class="info-text">🃏 Все игроки выбрали карты. Переходим к голосованию...</div>`;
+          } else {
+            const waitingFor = others.filter(p => !G.placedPlayers.includes(p.id)).map(p=>colorPlayerName(p.id)).join(', ');
+            html = `<div class="info-text">⏳ Ожидаем карты от: ${waitingFor} <span style="color:var(--text-dim)">(${placed}/${total})</span></div>`;
+          }
+          html += `<div class="card-grid">`;
+          (active.cards || []).forEach((card, idx) => {
+            html += `<div class="card no-select" onclick="openCardViewer(window.getMyHandForViewer(), ${idx})">${cardFaceHtml(card)}<button class="view-btn" onclick="event.stopPropagation(); openCardViewer(window.getMyHandForViewer(), ${idx})">🔍</button></div>`;
+          });
+          html += `</div>`;
+        } else if (G.placedPlayers.includes(active.id)) {
+          html = `<div class="info-text success">✅ Карта отправлена. Ожидайте остальных игроков.</div>`;
+          html += `<div class="card-grid">`;
+          (active.cards || []).forEach((card, idx) => {
+            html += `<div class="card no-select" onclick="openCardViewer(window.getMyHandForViewer(), ${idx})">${cardFaceHtml(card)}<button class="view-btn" onclick="event.stopPropagation(); openCardViewer(window.getMyHandForViewer(), ${idx})">🔍</button></div>`;
+          });
+          html += `</div>`;
+        } else {
+          const assocText = G.association ? ` «${escapeHtml(G.association)}»` : '';
+          html = `<div class="announce">🃏 Выберите карту под ассоциацию${assocText}</div>`;
+          html += `<div class="card-grid">`;
+          (active.cards || []).forEach((card, idx) => {
+            const sel = G.selectedCardForPlayer[active.id] === idx ? 'selected' : '';
+            html += `<div class="card ${sel}" onclick="Game.selectCard(${idx})">`;
+            html += cardFaceHtml(card);
+            html += `<button class="view-btn" onclick="event.stopPropagation(); openCardViewer(window.getMyHandForViewer(), ${idx})">🔍</button>`;
+            html += `</div>`;
+          });
+          html += `</div>`;
+          html += `<button class="btn action-btn" id="submitCardBtn" ${G.selectedCardForPlayer[active.id]===undefined?'disabled':''}>📤 Отправить</button>`;
+        }
+      }
+    }
+    else if (phase === 'voting'){
+      const isMode2 = G.gameMode === '2';
+      const votesObj = isMode2 ? G.votes2 : G.votes;
+      const votersNeeded = isMode2 ? G.players.length : G.players.filter(p => p.id !== leader.id).length;
+      const allVoted = Object.keys(votesObj).length >= votersNeeded;
+      const leaderCardIdx = G.leaderCardIndex;
+      const cards = G.playedCards || [];
+
+      if (!isMode2 && isLeader) {
+        html = `<div class="info-text">${allVoted ? '🗳️ Голосование завершено.' : '⏳ Игроки голосуют. Ожидайте...'}</div>`;
+        html += `<div class="card-grid">`;
+        cards.forEach((item, idx) => {
+          const isLC = idx === leaderCardIdx;
+          const style = isLC ? `border-color:${getPlayerColor(leader.id)}; border-width:4px;` : '';
+          html += `<div class="card played ${isLC?'leader-card':''}" style="opacity:1; ${style}" onclick="openCardViewer(window.getPlayedCardsForViewer(), ${idx})">`;
+          html += cardFaceHtml(item.card);
+          html += `<button class="view-btn" onclick="event.stopPropagation(); openCardViewer(window.getPlayedCardsForViewer(), ${idx})">🔍</button>`;
+          html += `</div>`;
+        });
+        html += `</div>`;
+      } else {
+        const alreadyVoted = votesObj[active.id] !== undefined;
+        if (alreadyVoted) {
+          html = `<div class="info-text success">✅ Вы проголосовали. Ожидайте остальных.</div>`;
+        } else {
+          html = `<div class="announce">🔮 Угадайте карту ${isMode2 ? 'мамонта' : 'ведущего'}</div>`;
+        }
+        html += `<div class="card-grid">`;
+        cards.forEach((item, idx) => {
+          const isMy = item.playerId === active.id;
+          const canSelect = votesObj[active.id] === undefined && !isMy && !allVoted;
+          const sel = G.selectedVoteForPlayer[active.id] === idx ? 'selected' : '';
+          const click = canSelect ? `onclick="Game.selectVoteCard(${idx})"` : '';
+          html += `<div class="card ${sel} ${isMy?'my-card':''} ${!canSelect && votesObj[active.id]===undefined ? 'no-select':''}" ${click}>`;
+          html += cardFaceHtml(item.card);
+          if (isMy) html += `<span class="my-label">Ваша</span>`;
+          html += `<button class="view-btn" onclick="event.stopPropagation(); openCardViewer(window.getPlayedCardsForViewer(), ${idx})">🔍</button>`;
+          html += `</div>`;
+        });
+        html += `</div>`;
+        if (!alreadyVoted && !allVoted) {
+          const btnId = isMode2 ? 'voteSubmitBtn2' : 'voteSubmitBtn';
+          html += `<button class="btn action-btn" id="${btnId}" ${G.selectedVoteForPlayer[active.id]===undefined?'disabled':''}>✅ Голосовать</button>`;
+        }
+      }
+    }
+    else if (phase === 'result'){
+      html = renderResultPhase(active);
+    }
+    else {
+      html = `<div class="info-text">Неизвестная фаза</div>`;
+    }
+
+    document.getElementById('windowContent').innerHTML = html;
+    bindPhaseHandlers(phase, active, leader, isLeader);
+  }
+
+  // ====== РЕНДЕР РЕЗУЛЬТАТОВ ======
+  function renderResultPhase(active){
+    return G.showField ? renderFieldSummaryPhase(active) : renderResultCardsPhase(active);
+  }
+
+  // ====== ЭКРАН 1 ПОСЛЕ ГОЛОСОВАНИЯ: КАРТЫ С МЕТКАМИ ГОЛОСОВ ======
+  function renderResultCardsPhase(active){
+    const result = G.lastResult;
+    if (!result) return `<div class="info-text">Нет результатов</div>`;
+
+    const cards = result.playedCards || [];
+    const votes = result.votes || {};
+    const leaderCardIdx = result.leaderCardIndex;
+    const isMammoth = result.mode === '2';
+
+    let html = `<div class="announce">🏁 Результаты хода ${G.turn}</div>`;
+    if (result.association && result.association.trim()) html += `<div><strong>Ассоциация:</strong> «${escapeHtml(result.association)}»</div>`;
+
+    html += `<div class="card-grid">`;
+    cards.forEach((item, idx) => {
+      const isMy = item.playerId === active.id;
+      const voterIcons = getVoterIconsHtml(votes, idx);
+      const isLC = idx === leaderCardIdx;
+      const isBotCard = item.playerId && item.playerId.startsWith('bot_card_');
+      const ownerColor = isBotCard ? 'transparent' : getPlayerColorSafeId(item.playerId);
+      const borderWidth = isLC ? '5px' : '3px';
+      const leaderClass = isLC ? (isMammoth ? 'mammoth-card' : 'leader-card') : '';
+      html += `<div class="card played ${isMy?'my-card':''} ${leaderClass} owner-card" style="opacity:1; cursor:default; border-color:${ownerColor}; border-width:${borderWidth};" onclick="openCardViewer(window.getResultCardsForViewer(), ${idx})">`;
+      html += cardFaceHtml(item.card);
+      if (isMy) html += `<span class="my-label">Ваша</span>`;
+      html += voterIcons;
+      html += `<button class="view-btn" onclick="event.stopPropagation(); openCardViewer(window.getResultCardsForViewer(), ${idx})">🔍</button>`;
+      html += `</div>`;
+    });
+    html += `</div>`;
+
+    if (G.isRoomHost){
+      html += `<button class="btn action-btn" id="showFieldBtn">⏩ Продолжить</button>`;
+    } else {
+      html += `<div class="info-text" style="margin-top:8px;">⏳ Ожидайте хоста.</div>`;
+    }
+    return html;
+  }
+
+  // ====== ЭКРАН 2 ПОСЛЕ ГОЛОСОВАНИЯ: ПОЛЕ + ПОДРОБНЫЕ ИТОГИ ======
+  function renderFieldSummaryPhase(active){
+    const result = G.lastResult;
+    if (!result) return `<div class="info-text">Нет результатов</div>`;
+    const isMammoth = result.mode === '2';
+
+    let topHtml = '';
+    if (G.gameOver){
+      topHtml = `<div class="announce">${getWinnerAnnouncementHtml()}</div>`;
+    } else if (G.awaitingContinueDecision){
+      let finishMsg;
+      if (isMammoth){
+        finishMsg = G.finishInfo || 'Кто-то дошёл до финиша!';
+      } else {
+        const reachedByMe = G.finishInfoPlayerId === G.myId;
+        finishMsg = reachedByMe
+          ? '🏁 Вы достигли финиша!'
+          : `🏁 ${escapeHtml(getPlayer(G.finishInfoPlayerId)?.name || 'Игрок')} достиг финиша!`;
+      }
+      topHtml = `<div class="announce">${finishMsg}</div>`;
+    }
+
+    let html = topHtml;
+    html += `<div class="round-summary"><div class="rs-title">📊 Итоги раунда</div>`;
+    if (isMammoth){
+      const guessers = result.guessers || [];
+      const total = guessers.length;
+      let desc = total === 0 ? '0 оч. — никто не угадал карту мамонта'
+        : total === 2 ? '+2 оч. — оба угадали карту мамонта'
+        : `+1 оч. — карту мамонта угадал ${escapeHtml(getPlayer(guessers[0])?.name || '')}`;
+      html += `<div style="margin-top:4px;">${desc}</div>`;
+      html += `<div>${result.mammothPoints > 0 ? '+' + result.mammothPoints : 0} оч. мамонту</div>`;
+      html += `<div style="margin-top:4px; color:var(--text-dim);">Общий слон: клетка ${result.commonSlonPosition % TRACK_TOTAL}/${TRACK_TOTAL}</div>`;
+      html += `<div style="color:var(--text-dim);">Мамонт: клетка ${result.mammothPosition % TRACK_TOTAL}/${TRACK_TOTAL}</div>`;
+    } else {
+      const isLeaderPlayer = active.id === result.leader.id;
+      const guessers = result.guessers || [];
+      const pointsGuess = result.pointsGuess || {};
+      const pointsVotes = result.pointsVotes || {};
+      const totalVoters = result.totalVoters || 0;
+
+      if (isLeaderPlayer){
+        const guessCount = guessers.length;
+        const leaderGuessPoints = pointsGuess[active.id] || 0;
+        const desc = guessCount === 0 ? '0 оч. — вашу карту не угадал никто'
+          : guessCount === totalVoters ? '0 оч. — вашу карту угадали все'
+          : `+${leaderGuessPoints} оч. — вашу карту угадали, но не все`;
+        const leaderVotes = pointsVotes[active.id] || 0;
+        html += `<div style="margin-top:4px;">${desc}</div>`;
+        if (leaderVotes > 0) html += `<div>+${leaderVotes} оч. за голоса</div>`;
+        html += `<div class="result-total">Итого: +${leaderGuessPoints + leaderVotes} оч.</div>`;
+      } else {
+        const guessPoints = pointsGuess[active.id] || 0;
+        const votePoints = pointsVotes[active.id] || 0;
+        const guessText = guessPoints > 0 ? `+${guessPoints} оч. — вы угадали карту ведущего` : '0 оч. — вы не угадали карту ведущего';
+        html += `<div style="margin-top:4px;">${guessText}</div>`;
+        html += `<div>${votePoints > 0 ? '+' + votePoints : 0} оч. за голоса</div>`;
+        html += `<div class="result-total">Итого: +${guessPoints + votePoints} оч.</div>`;
+      }
+      html += `<div style="margin-top:4px; color:var(--text-dim);">Ваша позиция: клетка ${active.position % TRACK_TOTAL}/${TRACK_TOTAL}</div>`;
+    }
+    html += `</div>`;
+
+    if (G.gameOver){
+      html += getFinalStandingsHtml();
+    } else if (G.awaitingContinueDecision){
+      if (G.isRoomHost){
+        html += `<div class="stack-btns">
+          <button class="btn btn-success" id="continueGameBtn">Сыграть ещё круг</button>
+          <button class="btn btn-danger" id="finishGameBtn">Закончить игру</button>
+        </div>`;
+      } else {
+        html += `<div class="info-text">⏳ Хост решает: закончить игру или сыграть ещё круг.</div>`;
+      }
+    } else if (G.awaitingDeckDecision){
+      html += renderDeckDecisionHtml();
+    } else if (G.isRoomHost){
+      html += `<button class="btn action-btn" id="nextTurnBtnMain">⏩ Продолжить</button>`;
+    } else {
+      html += `<div class="info-text" style="margin-top:8px;">⏳ Ожидайте, пока хост запустит следующий ход.</div>`;
+    }
+    return html;
+  }
+
+  // ====== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ======
+  function getPlayerColorSafe(playerObj){ return getPlayer(playerObj?.id)?.color || playerObj?.color || '#fff'; }
+  function getPlayerColorSafeId(id){ return getPlayer(id)?.color || '#fff'; }
+
+  function getVoterIconsHtml(votes, cardIndex){
+    const voters = [];
+    for (const id in votes){ if (votes[id] === cardIndex){ const p = getPlayer(id); if (p) voters.push(p); } }
+    if (!voters.length) return '';
+    return `<div class="voter-icons">${voters.map(p => `<span class="voter" style="color:${p.color};">${escapeHtml(p.name)}</span>`).join('')}</div>`;
+  }
+
+  // ====== ОБРАБОТЧИКИ ФАЗ ======
+  function bindPhaseHandlers(phase, active, leader, isLeader){
+    if (phase === 'association' && isLeader){
+      if (G.gameMode !== '2'){
+        const btn = document.getElementById('submitAssocBtn'), input = document.getElementById('assocInput');
+        if (btn && input){
+          input.addEventListener('input', () => { G.associationInput = input.value; });
+          btn.addEventListener('click', () => {
+            if (G.selectedCardIndex === -1) return toast('Сначала выберите карту', 'warn');
+            Game.submitAssociation(input.value.trim());
+          });
+        }
+      } else {
+        const btn = document.getElementById('submitAssocBtn2'), input = document.getElementById('assocInput2');
+        if (btn && input){
+          input.addEventListener('input', () => { G.associationInput = input.value; });
+          btn.addEventListener('click', () => Game.submitAssociation2(input.value.trim()));
+        }
+      }
+    } else if (phase === 'placing'){
+      if (G.gameMode === '2'){
+        const btn = document.getElementById('submitCardBtn2');
+        if (btn) btn.addEventListener('click', () => {
+          if ((G.selectedCards2[active.id]||[]).length < 2) return toast('Выберите 2 карты', 'warn');
+          Game.submitCards2();
+        });
+      } else if (!isLeader){
+        const btn = document.getElementById('submitCardBtn');
+        if (btn) btn.addEventListener('click', () => {
+          if (G.selectedCardForPlayer[active.id] === undefined) return toast('Выберите карту', 'warn');
+          Game.submitCard();
+        });
+      }
+    } else if (phase === 'voting'){
+      const btn = G.gameMode === '2' ? document.getElementById('voteSubmitBtn2') : (!isLeader ? document.getElementById('voteSubmitBtn') : null);
+      if (btn) btn.addEventListener('click', () => {
+        if (G.selectedVoteForPlayer[active.id] === undefined) return toast('Выберите карту', 'warn');
+        G.gameMode === '2' ? Game.submitVote2() : Game.submitVote();
+      });
+    }
+
+    const showFieldBtn = document.getElementById('showFieldBtn');
+    if (showFieldBtn){
+      showFieldBtn.addEventListener('click', () => {
+        if (!G.isRoomHost) return;
+        if (G.phase !== 'result' || G.showField) return;
+        showFieldNow();
+      });
+    }
+
+    const nextBtn = document.getElementById('nextTurnBtnMain');
+    if (nextBtn){
+      nextBtn.addEventListener('click', () => {
+        if (!G.isRoomHost) return;
+        if (G.gameOver){ toast('Игра окончена — нажмите «Сбросить игру»', 'warn'); return; }
+        if (G.awaitingContinueDecision){ toast('Сначала решите: закончить игру или сыграть ещё круг', 'warn'); return; }
+        if (G.phase !== 'result') return;
+        const isMode2 = G.gameMode === '2';
+        if (!ensureEnoughCards()) return;
+        if (isMode2) nextTurn2();
+        else nextTurnStandard();
+      });
+    }
+
+    const finishBtn = document.getElementById('finishGameBtn');
+    if (finishBtn) finishBtn.addEventListener('click', () => { if (G.isRoomHost) finishGameAtFinish(); });
+    const continueBtn = document.getElementById('continueGameBtn');
+    if (continueBtn) continueBtn.addEventListener('click', () => { if (G.isRoomHost) continueGameAfterFinish(); });
+
+    const continueDeckBtn = document.getElementById('continueDeckBtn');
+    if (continueDeckBtn) continueDeckBtn.addEventListener('click', () => { if (G.isRoomHost) resolveDeckDecision('continue'); });
+    const switchDeckBtn = document.getElementById('switchDeckBtn');
+    if (switchDeckBtn) switchDeckBtn.addEventListener('click', () => {
+      if (!G.isRoomHost) return;
+      G.deckSwitchPickerOpen = true;
+      renderGame();
+    });
+    const deckSwitchCancelBtn = document.getElementById('deckSwitchCancelBtn');
+    if (deckSwitchCancelBtn) deckSwitchCancelBtn.addEventListener('click', () => {
+      if (!G.isRoomHost) return;
+      G.deckSwitchPickerOpen = false;
+      renderGame();
+    });
+    const deckSwitchConfirmBtn = document.getElementById('deckSwitchConfirmBtn');
+    if (deckSwitchConfirmBtn) deckSwitchConfirmBtn.addEventListener('click', () => { if (G.isRoomHost) resolveDeckDecision('switch'); });
+    const finishGameFromDeckBtn = document.getElementById('finishGameFromDeckBtn');
+    if (finishGameFromDeckBtn) finishGameFromDeckBtn.addEventListener('click', () => { if (G.isRoomHost) finishGameFromDeckDecision(); });
+    const deckSwitchCheckboxes = document.getElementById('deckSwitchCheckboxes');
+    if (deckSwitchCheckboxes){
+      renderDeckCheckboxesInto(deckSwitchCheckboxes, G.selectedDeckIds, (ids) => {
+        G.selectedDeckIds = ids;
+        renderGame();
+      });
+    }
+  }
+
+  // ====== ПОКАЗ ПОЛЯ (без автотаймера, синхронизируется всем игрокам) ======
+  function showFieldNow(){
+    G.showField = true;
+    manualFieldView = false; // страховка: не даём двум режимам поля включиться одновременно
+    renderGame();
+    // Принудительная перерисовка поля в следующем кадре, чтобы гарантировать отображение
+    requestAnimationFrame(() => { drawFieldAnimated(); });
+  }
+
+  // Локальный (несинхронизируемый) флаг ручного просмотра игрового поля —
+  // доступен в любой момент игры любому игроку через кнопку «🗺️ Игровое поле».
+  let manualFieldView = false;
+  function openManualFieldView(){
+    // Если поле и так уже показано на экране результатов (G.showField),
+    // полноэкранный режим не нужен — он перекрыл бы собой кнопку «Продолжить»
+    // прямо под полем. В этом случае просто ничего не делаем: поле уже видно.
+    if (G.showField) return;
+    manualFieldView = true;
+    renderGame();
+    requestAnimationFrame(() => { drawFieldAnimated(); });
+  }
+  function closeManualFieldView(){
+    manualFieldView = false;
+    renderGame();
+  }
+
+  // ====== ДОПОЛНИТЕЛЬНЫЕ ФУНКЦИИ ======
+  function renderDeckDecisionHtml(){
+    const info = G.deckDecisionInfo || { needed:0, available:0 };
+    const canContinue = info.available >= info.needed;
+    if (!G.isRoomHost){
+      return `<div class="announce small">Колода закончилась, ожидайте решение хоста</div>`;
+    }
+    if (G.deckSwitchPickerOpen){
+      let html = `<div class="announce small">Выберите колоды для продолжения</div>`;
+      html += `<div class="deck-picker" id="deckSwitchCheckboxes"></div>`;
+      html += `<div class="stack-btns">
+        <button class="btn btn-success" id="deckSwitchConfirmBtn">Применить и продолжить</button>
+        <button class="btn btn-secondary" id="deckSwitchCancelBtn">Отмена</button>
+      </div>`;
+      return html;
+    }
+    let html = `<div class="announce small">Колода закончилась, выберите действие:</div>`;
+    html += `<div class="stack-btns">`;
+    if (canContinue) html += `<button class="btn btn-success" id="continueDeckBtn">Продолжить этим набором</button>`;
+    html += `<button class="btn btn-secondary" id="switchDeckBtn">Сменить набор</button>`;
+    html += `<button class="btn btn-danger" id="finishGameFromDeckBtn">Закончить игру</button>`;
+    html += `</div>`;
+    return html;
+  }
+
+  function renderDeckCheckboxesInto(container, selectedIds, onToggle){
+    if (!container) return;
+    container.innerHTML = CARD_DECKS.map(d => {
+      const checked = selectedIds.includes(d.id);
+      return `<label class="deck-option ${checked?'checked':''}">
+        <input type="checkbox" data-deck="${d.id}" ${checked?'checked':''}>
+        ${d.cover ? `<img class="deck-thumb" src="${d.cover}" alt="">` : ''}
+        <span class="deck-name">${escapeHtml(d.name)}</span>
+        <span class="deck-count">${d.cards.length} карт</span>
+      </label>`;
+    }).join('');
+    container.querySelectorAll('[data-deck]').forEach(el => {
+      el.addEventListener('change', () => {
+        const id = el.getAttribute('data-deck');
+        let next = selectedIds.slice();
+        if (el.checked){ if (!next.includes(id)) next.push(id); }
+        else {
+          if (next.length <= 1){ el.checked = true; toast('Должна остаться выбрана хотя бы одна колода', 'warn'); return; }
+          next = next.filter(x => x !== id);
+        }
+        onToggle(next);
+      });
+    });
+  }
+
+  // ===================================================================
+  // ЛОББИ: ПРОСМОТР И ВЫБОР КОЛОД (плитки 3 в ряд)
+  // ===================================================================
+  function renderDeckLobbyGrid(){
+    const grid = document.getElementById('deckLobbyGrid');
+    const selectable = G.isRoomHost;
+    if (!G.selectedDeckIds){ G.selectedDeckIds = []; }
+    grid.innerHTML = CARD_DECKS.map(d => {
+      const sel = G.selectedDeckIds.includes(d.id);
+      return `<div class="deck-tile ${selectable && sel ? 'selected':''}" data-deck="${d.id}">
+        ${d.cover ? `<img src="${d.cover}" alt="">` : ''}
+        <button class="view-btn" data-view-deck="${d.id}" title="Просмотреть колоду">🔍</button>
+        <div class="deck-tile-label">${escapeHtml(d.name)}</div>
+        <div class="deck-tile-count">${d.cards.length} карт</div>
+      </div>`;
+    }).join('');
+
+    grid.querySelectorAll('[data-view-deck]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openDeckContentView(btn.getAttribute('data-view-deck'));
+      });
+    });
+
+    grid.querySelectorAll('.deck-tile').forEach(tile => {
+      tile.addEventListener('click', () => {
+        const id = tile.getAttribute('data-deck');
+        if (selectable){
+          let next = G.selectedDeckIds.slice();
+          if (next.includes(id)){
+            if (next.length <= 1){ toast('Должна остаться выбрана хотя бы одна колода', 'warn'); return; }
+            next = next.filter(x => x !== id);
+          } else {
+            next.push(id);
+          }
+          G.selectedDeckIds = next;
+          renderDeckLobbyGrid();
+          if (G.isRoomHost){ broadcastState(); }
+        } else {
+          openDeckContentView(id);
+        }
+      });
+    });
+  }
+
+  let deckPickerMode = 'browse'; // 'browse' — обзор из лобби, 'start' — выбор перед стартом игры
+
+  function openDeckLobbyBrowser(){
+    deckPickerMode = 'browse';
+    document.getElementById('deckLobbyTitle').textContent = G.isRoomHost
+      ? 'Выберите колоды для игры'
+      : 'Колоды карт — можно полистать, пока ждём остальных';
+    renderDeckLobbyGrid();
+    updateDeckLobbyFooter();
+    document.getElementById('deckLobbyOverlay').classList.remove('hidden');
+  }
+  function openDeckPickerForStart(){
+    deckPickerMode = 'start';
+    document.getElementById('deckLobbyTitle').textContent = 'Выберите колоды для игры';
+    renderDeckLobbyGrid();
+    updateDeckLobbyFooter();
+    document.getElementById('deckLobbyOverlay').classList.remove('hidden');
+  }
+  function updateDeckLobbyFooter(){
+    const isStart = deckPickerMode === 'start';
+    document.getElementById('deckLobbyCloseBtn').classList.toggle('hidden', isStart);
+    document.getElementById('deckLobbyCancelBtn').classList.toggle('hidden', !isStart);
+    document.getElementById('deckLobbyStartBtn').classList.toggle('hidden', !isStart);
+  }
+  function closeDeckLobbyBrowser(){
+    document.getElementById('deckLobbyOverlay').classList.add('hidden');
+  }
+
+  let deckViewCards = [];
+  function openDeckContentView(deckId){
+    const deck = getDeckById(deckId);
+    if (!deck) return;
+    document.getElementById('deckContentTitle').textContent = `${deck.name} — ${deck.cards.length} карт`;
+    deckViewCards = deck.cards;
+    document.getElementById('deckContentGrid').innerHTML = deck.cards.map((c, i) =>
+      `<div class="card" data-view-idx="${i}">${cardFaceHtml(c)}</div>`
+    ).join('');
+    document.getElementById('deckContentGrid').querySelectorAll('[data-view-idx]').forEach(el => {
+      el.addEventListener('click', () => openCardViewer(deckViewCards, Number(el.getAttribute('data-view-idx'))));
+    });
+    document.getElementById('deckContentOverlay').classList.remove('hidden');
+  }
+  function closeDeckContentView(){
+    document.getElementById('deckContentOverlay').classList.add('hidden');
+  }
+
+  document.getElementById('deckBrowseBtn').addEventListener('click', openDeckLobbyBrowser);
+  document.getElementById('deckLobbyCloseBtn').addEventListener('click', closeDeckLobbyBrowser);
+  document.getElementById('deckLobbyCloseX').addEventListener('click', closeDeckLobbyBrowser);
+  document.getElementById('deckContentBackBtn').addEventListener('click', closeDeckContentView);
+  document.getElementById('deckContentCloseX').addEventListener('click', closeDeckContentView);
+
+  function finishGameFromDeckDecision(){
+    if (!G.isRoomHost) return;
+    G.awaitingDeckDecision = false;
+    G.deckDecisionInfo = null;
+    G.deckDecisionAfterAction = null;
+    G.deckSwitchPickerOpen = false;
+    G.gameOver = true;
+    renderGame();
+  }
+
+  function getWinnerAnnouncementHtml(){
+    if (G.gameMode === '2'){
+      if (G.commonSlonPosition >= TRACK_TOTAL) return '🎉 Победа! Общий слон достиг финиша!';
+      if (G.mammothPosition >= TRACK_TOTAL) return '💀 Мамонт победил!';
+      return '🏁 Игра окончена!';
+    }
+    const winner = [...G.players].sort((a,b) => b.score - a.score)[0];
+    return winner ? `🏁 Игра окончена! Победитель: ${escapeHtml(winner.name)}` : '🏁 Игра окончена!';
+  }
+
+  function getFinalStandingsHtml(){
+    if (G.gameMode === '2'){
+      return `<div class="round-summary" style="text-align:center;">
+        <div>Общий слон: клетка ${G.commonSlonPosition % TRACK_TOTAL}/${TRACK_TOTAL}</div>
+        <div>Мамонт: клетка ${G.mammothPosition % TRACK_TOTAL}/${TRACK_TOTAL}</div>
+      </div>`;
+    }
+    const sorted = [...G.players].sort((a,b) => b.score - a.score);
+    let html = `<div class="round-summary"><div class="rs-title">🏆 Итоговый счёт</div>`;
+    sorted.forEach((p, i) => {
+      html += `<div>${i+1}. ${escapeHtml(p.name)} — ${p.score} оч.</div>`;
+    });
+    html += `</div>`;
+    return html;
+  }
+
+  function finishGameAtFinish(){
+    G.gameOver = true;
+    G.awaitingContinueDecision = false;
+    renderGame();
+  }
+
+  function continueGameAfterFinish(){
+    const mod = TRACK_TOTAL;
+
+    if (G.gameMode === '2'){
+      const rawCommon = G.pendingRawCommon != null ? G.pendingRawCommon : G.commonSlonPosition;
+      const rawMammoth = G.pendingRawMammoth != null ? G.pendingRawMammoth : G.mammothPosition;
+      G.commonSlonPosition = ((rawCommon % mod) + mod) % mod;
+      G.mammothPosition = ((rawMammoth % mod) + mod) % mod;
+      G.pendingRawCommon = null;
+      G.pendingRawMammoth = null;
+    } else {
+      G.players.forEach(p => {
+        const raw = p.pendingRawPos != null ? p.pendingRawPos : p.position;
+        const wrapped = ((raw % mod) + mod) % mod;
+        p.position = wrapped;
+        p.pendingRawPos = null;
+      });
+    }
+
+    G.awaitingContinueDecision = false;
+    G.finishInfo = null; G.finishInfoPlayerId = null;
+    toast('Продолжаем! Фишки едут дальше по кругу.', 'success');
+    renderGame();
+  }
+
+  function resolveDeckDecision(mode){
+    if (mode === 'continue'){
+      // Карты из колод, которые сейчас НЕ выбраны (остались от прежнего выбора,
+      // уже отыгранные и осевшие в сбросе), забываем навсегда — они не должны
+      // возвращаться в игру после смены набора. Перетасовываем только те
+      // отыгранные карты, что относятся к текущему выбору колод.
+      const selectedSet = new Set(G.selectedDeckIds);
+      const recyclable = G.discard.filter(c => c && selectedSet.has(c.deckId));
+      // Сначала докладываем ещё не розданные карты текущей колоды (они
+      // «наверху стопки» и раздаются первыми), и только когда они закончатся —
+      // перемешанный сброс. Дублей быть не может: это одно и то же
+      // объединение колода+сброс, просто с приоритетом порядка.
+      G.deck = shuffle(recyclable).concat(shuffle(G.deck));
+      G.discard = [];
+    } else if (mode === 'switch'){
+      const held = collectHeldCardUids();
+      // Сохраняем ещё не розданные карты прежнего набора — они не сгорают
+      // при смене колод, а раздаются в первую очередь. Исключаем их uid-ы
+      // из свежего пула, чтобы при пересечении выбранных колод карта не
+      // попала в раздачу дважды.
+      const oldRemaining = G.deck.slice();
+      const oldRemainingUids = new Set(oldRemaining.map(c => c.uid));
+      const excludeUids = new Set([...held, ...oldRemainingUids]);
+      const pool = buildPoolFromDecks(G.selectedDeckIds, excludeUids);
+      if (oldRemaining.length + pool.length < calcNeededCards()){
+        toast('В выбранных колодах всё ещё не хватает карт — добавьте ещё колоду', 'warn');
+        return;
+      }
+      G.deck = shuffle(pool).concat(shuffle(oldRemaining));
+      G.discard = [];
+    }
+    G.awaitingDeckDecision = false;
+    G.deckDecisionInfo = null;
+    G.deckSwitchPickerOpen = false;
+    toast(mode === 'continue' ? 'Продолжаем этим набором карт!' : 'Колоды обновлены!', 'success');
+    const afterAction = G.deckDecisionAfterAction || 'advance';
+    G.deckDecisionAfterAction = null;
+    if (afterAction === 'refillOnly'){
+      refillHandsRoundRobin(G.players);
+      renderGame();
+    } else {
+      const isMode2 = G.gameMode === '2';
+      if (isMode2) nextTurn2();
+      else nextTurnStandard();
+    }
+  }
+
+  function nextTurnStandard(){
+    if (G.gameOver || G.awaitingContinueDecision || G.awaitingDeckDecision) return;
+    G.turn++;
+    G.currentLeaderIndex = (G.currentLeaderIndex + 1) % G.players.length;
+    resetRoundState();
+    refillHandsRoundRobin(G.players);
+    focusPlayer(getLeader()?.id || G.players[0]?.id || HOST_ID);
+    G.showField = false;
+    if (G.fieldTimer) clearTimeout(G.fieldTimer);
+    G.fieldTimer = null;
+    renderGame();
+  }
+
+  function nextTurn2(){
+    if (G.gameOver || G.awaitingContinueDecision || G.awaitingDeckDecision) return;
+    G.turn++;
+    G.currentLeaderIndex = (G.currentLeaderIndex + 1) % G.players.length;
+    resetRoundState();
+    dealAllPlayers();
+    focusPlayer(getLeader()?.id || G.players[0]?.id || HOST_ID);
+    G.showField = false;
+    if (G.fieldTimer) clearTimeout(G.fieldTimer);
+    G.fieldTimer = null;
+    renderGame();
+  }
+
+  function resetRoundState(){
+    G.phase = 'association';
+    G.votes = {}; G.votes2 = {};
+    G.leaderCardIndex = -1;
+    G.playedCards = [];
+    G.association = ''; G.associationInput = '';
+    G.placedPlayers = [];
+    G.leaderCard = null; G.mammothCard = null;
+    G.selectedCardIndex = -1;
+    G.selectedCardForPlayer = {}; G.selectedVoteForPlayer = {}; G.selectedCards2 = {};
+    G.lastResult = null;
+    G.finishInfo = null; G.finishInfoPlayerId = null;
+    G.pendingRawCommon = null; G.pendingRawMammoth = null;
+  }
+
+  // ===================================================================
+  // ИГРОВЫЕ ДЕЙСТВИЯ (Game)
+  // ===================================================================
+  const Game = {};
+
+  Game.selectLeaderCard = function(idx){
+    if (G.phase !== 'association' || getActivePlayer()?.id !== getLeader()?.id) return;
+    G.selectedCardIndex = idx; renderGame();
+  };
+  Game.selectCard = function(idx){
+    if (G.phase !== 'placing' || getActivePlayer()?.id === getLeader()?.id) return;
+    const active = getActivePlayer(); if (!active) return;
+    G.selectedCardForPlayer[active.id] = idx; renderGame();
+  };
+  Game.toggleCard2 = function(idx){
+    if (G.phase !== 'placing' || G.gameMode !== '2') return;
+    const active = getActivePlayer(); if (!active) return;
+    const sel = G.selectedCards2[active.id] || [];
+    const pos = sel.indexOf(idx);
+    if (pos !== -1) sel.splice(pos,1);
+    else if (sel.length < 2) sel.push(idx);
+    G.selectedCards2[active.id] = sel; renderGame();
+  };
+  Game.selectVoteCard = function(idx){
+    if (G.phase !== 'voting') return;
+    const active = getActivePlayer(); if (!active) return;
+    const card = G.playedCards[idx];
+    if (card && card.playerId === active.id){ toast('Нельзя голосовать за свою карту', 'warn'); return; }
+    G.selectedVoteForPlayer[active.id] = idx; renderGame();
+  };
+
+  Game.submitAssociation = function(assoc){
+    if (G.phase !== 'association' || getActivePlayer()?.id !== getLeader()?.id) return;
+    if (G.selectedCardIndex === -1) return toast('Выберите карту', 'warn');
+    if (!G.isRoomHost){ sendAction('submitAssociation', { cardIndex:G.selectedCardIndex, association:assoc }); return; }
+    const leader = getLeader(); const leaderPlayer = getPlayer(leader.id);
+    G.leaderCard = leaderPlayer.cards[G.selectedCardIndex];
+    leaderPlayer.cards.splice(G.selectedCardIndex, 1);
+    G.association = assoc; G.associationInput = '';
+    G.phase = 'placing'; G.placedPlayers = []; G.playedCards = []; G.leaderCardIndex = -1; G.selectedCardIndex = -1;
+    G.selectedCardForPlayer = {}; G.selectedVoteForPlayer = {};
+    const firstOther = G.players.find(p => p.id !== leader.id);
+    if (firstOther) focusPlayer(firstOther.id);
+    renderGame();
+  };
+
+  Game.submitAssociation2 = function(assoc){
+    if (G.phase !== 'association' || getActivePlayer()?.id !== getLeader()?.id) return;
+    if (!G.isRoomHost){ sendAction('submitAssociation2', { association:assoc }); return; }
+    const leader = getLeader();
+    G.association = assoc; G.associationInput = '';
+    G.phase = 'placing'; G.placedPlayers = []; G.playedCards = [];
+    G.mammothCard = drawFromDeck();
+    G.selectedCards2 = {}; G.votes2 = {};
+    G.players.forEach(p => { G.selectedCards2[p.id] = []; });
+    focusPlayer(leader.id);
+    renderGame();
+  };
+
+  Game.submitCard = function(){
+    if (G.phase !== 'placing' || G.gameMode === '2') return;
+    const active = getActivePlayer(); const leader = getLeader();
+    if (!active || !leader || active.id === leader.id || G.placedPlayers.includes(active.id)) return;
+    const idx = G.selectedCardForPlayer[active.id];
+    if (idx === undefined) return toast('Выберите карту', 'warn');
+    if (!G.isRoomHost){ sendAction('submitCard', { cardIndex: idx }); return; }
+    const card = active.cards[idx]; if (!card) return;
+    active.cards.splice(idx, 1);
+    G.placedPlayers.push(active.id);
+    G.playedCards.push({ playerId: active.id, card });
+    delete G.selectedCardForPlayer[active.id];
+    renderGame();
+
+    const others = G.players.filter(p => p.id !== leader.id);
+    const allPlaced = others.every(p => G.placedPlayers.includes(p.id));
+    if (allPlaced){
+      G.playedCards.push({ playerId: leader.id, card: G.leaderCard });
+      if (G.gameMode === '3'){
+        for (let i=0;i<2;i++) G.playedCards.push({ playerId:'bot_card_'+i, card: drawFromDeck() });
+      }
+      shuffle(G.playedCards);
+      G.leaderCardIndex = G.playedCards.findIndex(p => p.playerId === leader.id);
+      G.phase = 'voting'; G.votes = {}; G.selectedCardIndex = -1; G.selectedVoteForPlayer = {};
+      const firstOther = G.players.find(p => p.id !== leader.id);
+      if (firstOther) focusPlayer(firstOther.id);
+      renderGame();
+    } else {
+      const notPlaced = others.filter(p => !G.placedPlayers.includes(p.id));
+      if (notPlaced.length){ focusPlayer(notPlaced[0].id); renderGame(); }
+    }
+  };
+
+  Game.submitCards2 = function(){
+    if (G.phase !== 'placing' || G.gameMode !== '2') return;
+    const active = getActivePlayer(); if (!active || G.placedPlayers.includes(active.id)) return;
+    const selected = G.selectedCards2[active.id] || [];
+    if (selected.length < 2) return toast('Выберите 2 карты', 'warn');
+    if (!G.isRoomHost){ sendAction('submitCards2', { cardIndexes: selected.slice() }); return; }
+    [...selected].sort((a,b)=>b-a).forEach(idx => {
+      G.playedCards.push({ playerId: active.id, card: active.cards[idx] });
+      active.cards.splice(idx,1);
+    });
+    G.placedPlayers.push(active.id);
+    G.selectedCards2[active.id] = [];
+    renderGame();
+
+    if (G.players.every(p => G.placedPlayers.includes(p.id))){
+      if (G.mammothCard) G.playedCards.push({ playerId:'mammoth', card:G.mammothCard, isMammoth:true });
+      shuffle(G.playedCards);
+      G.leaderCardIndex = G.playedCards.findIndex(p => p.isMammoth === true);
+      G.phase = 'voting'; G.votes2 = {}; G.selectedCardIndex = -1; G.selectedVoteForPlayer = {};
+      focusPlayer(G.players[0].id);
+      renderGame();
+    } else {
+      const notPlaced = G.players.filter(p => !G.placedPlayers.includes(p.id));
+      if (notPlaced.length){ focusPlayer(notPlaced[0].id); renderGame(); }
+    }
+  };
+
+  Game.submitVote = function(){
+    if (G.phase !== 'voting' || G.gameMode === '2') return;
+    const active = getActivePlayer(); const leader = getLeader();
+    if (!active || !leader) return;
+    if (active.id === leader.id) return toast('Ведущий не голосует', 'warn');
+    if (G.votes[active.id] !== undefined) return;
+    const chosenIdx = G.selectedVoteForPlayer[active.id];
+    if (chosenIdx === undefined) return toast('Выберите карту', 'warn');
+    const card = G.playedCards[chosenIdx];
+    if (card && card.playerId === active.id) return toast('Нельзя голосовать за свою карту', 'warn');
+    if (!G.isRoomHost){ sendAction('submitVote', { cardIndex: chosenIdx }); return; }
+    G.votes[active.id] = chosenIdx;
+    delete G.selectedVoteForPlayer[active.id];
+    renderGame();
+
+    const others = G.players.filter(p => p.id !== leader.id);
+    if (Object.keys(G.votes).length >= others.length) calculateResultsStandard();
+    else {
+      const notVoted = others.filter(p => G.votes[p.id] === undefined);
+      if (notVoted.length){ focusPlayer(notVoted[0].id); renderGame(); }
+    }
+  };
+
+  Game.submitVote2 = function(){
+    if (G.phase !== 'voting' || G.gameMode !== '2') return;
+    const active = getActivePlayer(); if (!active) return;
+    if (G.votes2[active.id] !== undefined) return;
+    const chosenIdx = G.selectedVoteForPlayer[active.id];
+    if (chosenIdx === undefined) return toast('Выберите карту', 'warn');
+    const card = G.playedCards[chosenIdx];
+    if (card && card.playerId === active.id) return toast('Нельзя голосовать за свою карту', 'warn');
+    if (!G.isRoomHost){ sendAction('submitVote2', { cardIndex: chosenIdx }); return; }
+    G.votes2[active.id] = chosenIdx;
+    delete G.selectedVoteForPlayer[active.id];
+    renderGame();
+
+    if (Object.keys(G.votes2).length >= G.players.length) calculateResults2();
+    else {
+      const notVoted = G.players.filter(p => G.votes2[p.id] === undefined);
+      if (notVoted.length){ focusPlayer(notVoted[0].id); renderGame(); }
+    }
+  };
+
+  // ===================================================================
+  // ПОДСЧЁТ ОЧКОВ
+  // ===================================================================
+  function calculateResults2(){
+    const mammothIndex = G.leaderCardIndex;
+    const guessers = Object.keys(G.votes2).filter(id => G.votes2[id] === mammothIndex);
+    let mammothPoints = 0, playerPoints = 0;
+    if (guessers.length === 0){ mammothPoints = 3; playerPoints = 0; }
+    else if (guessers.length === 1){ mammothPoints = 1; playerPoints = 1; }
+    else { mammothPoints = 0; playerPoints = 2; }
+
+    G.players.forEach(p => { p.score += playerPoints; });
+
+    const rawCommon = G.commonSlonPosition + playerPoints;
+    const rawMammoth = G.mammothPosition + mammothPoints;
+    const reachedFinish = rawCommon >= TRACK_TOTAL || rawMammoth >= TRACK_TOTAL;
+
+    G.commonSlonPosition = reachedFinish ? Math.min(rawCommon, TRACK_TOTAL) : rawCommon;
+    G.mammothPosition = reachedFinish ? Math.min(rawMammoth, TRACK_TOTAL) : rawMammoth;
+    G.pendingRawCommon = rawCommon;
+    G.pendingRawMammoth = rawMammoth;
+
+    if (reachedFinish){
+      G.awaitingContinueDecision = true;
+      G.finishInfo = rawCommon >= TRACK_TOTAL
+        ? `🎉 Общий слон дошёл до финиша (${G.commonSlonPosition} оч.)!`
+        : `💀 Мамонт дошёл до финиша (${G.mammothPosition} оч.)!`;
+    }
+
+    G.lastResult = {
+      mode:'2', votes:{...G.votes2}, guessers, mammothPoints, playerPoints,
+      mammothPosition:G.mammothPosition, commonSlonPosition:G.commonSlonPosition,
+      reachedFinish, leader:getLeader(), association:G.association,
+      playedCards:[...G.playedCards], leaderCardIndex:G.leaderCardIndex,
+      pointsGuess:{}, pointsVotes:{}, totalVoters:G.players.length,
+    };
+
+    G.playedCards.forEach(item => { if (item.card) G.discard.push(item.card); });
+    G.playedCards = [];
+    if (G.mammothCard){ G.discard.push(G.mammothCard); G.mammothCard = null; }
+
+    G.phase = 'result';
+    focusPlayer(HOST_ID);
+    renderGame();
+  }
+
+  function calculateResultsStandard(){
+    const leader = getLeader(); if (!leader) return;
+    const leaderCardIndex = G.leaderCardIndex, votes = G.votes;
+
+    const guessers = Object.keys(votes).filter(id => votes[id] === leaderCardIndex && getPlayer(id));
+    const totalVoters = G.players.filter(p => p.id !== leader.id).length;
+
+    const pointsGuess = {}; G.players.forEach(p => pointsGuess[p.id] = 0);
+    const leaderGuessPoints = (guessers.length > 0 && guessers.length < totalVoters) ? 3 : 0;
+    pointsGuess[leader.id] = leaderGuessPoints;
+    G.players.forEach(p => { if (p.id !== leader.id && guessers.includes(p.id)) pointsGuess[p.id] = 3; });
+
+    const pointsVotes = {}; G.players.forEach(p => pointsVotes[p.id] = 0);
+    const playedCardsSnapshot = [...G.playedCards], votesSnapshot = {...votes};
+
+    G.playedCards.forEach((item, idx) => {
+      const ownerId = item.playerId;
+      if (ownerId && ownerId.startsWith('bot_card_')) return;
+      const owner = getPlayer(ownerId); if (!owner) return;
+      let votesCount = 0;
+      for (const voterId in votes){ if (votes[voterId] === idx && getPlayer(voterId)) votesCount++; }
+      if (votesCount > 0) pointsVotes[ownerId] += votesCount;
+    });
+    if (guessers.length === totalVoters || guessers.length === 0) pointsVotes[leader.id] = 0;
+
+    let reachedFinish = false;
+    let finisher = null;
+    G.players.forEach(p => {
+      const total = pointsGuess[p.id] + pointsVotes[p.id];
+      p.score += total;
+      const rawPos = (p.position||0) + total;
+      const finishedNow = rawPos >= TRACK_TOTAL;
+      p._prevPos = p.position;
+      p.position = finishedNow ? Math.min(rawPos, TRACK_TOTAL) : rawPos;
+      p.pendingRawPos = rawPos;
+      if (finishedNow){ reachedFinish = true; finisher = p; }
+    });
+    if (reachedFinish){
+      G.awaitingContinueDecision = true;
+      G.finishInfo = `${finisher.name} дошёл(-шла) до финиша с ${finisher.score} очками!`;
+      G.finishInfoPlayerId = finisher.id;
+    }
+
+    G.lastResult = {
+      mode:'standard', playedCards:playedCardsSnapshot, votes:votesSnapshot,
+      pointsGuess:{...pointsGuess}, pointsVotes:{...pointsVotes}, guessers, leader,
+      leaderCardIndex, totalVoters, reachedFinish, association:G.association, leaderCard:G.leaderCard,
+    };
+
+    G.playedCards.forEach(item => { if (item.card) G.discard.push(item.card); });
+    G.playedCards = [];
+    if (G.leaderCard){ G.discard.push(G.leaderCard); G.leaderCard = null; }
+
+    G.phase = 'result';
+    focusPlayer(HOST_ID);
+    renderGame();
+  }
+
+  // ===================================================================
+  // TOAST, CONFIRM, ПРОСМОТРЩИК
+  // ===================================================================
+  function toast(message, type){
+    type = type || 'info';
+    const el = document.createElement('div');
+    el.className = 'toast ' + type;
+    el.textContent = message;
+    document.getElementById('toastContainer').appendChild(el);
+    requestAnimationFrame(() => el.classList.add('show'));
+    setTimeout(() => {
+      el.classList.remove('show');
+      setTimeout(() => el.remove(), 300);
+    }, 3200);
+  }
+
+  function showConfirm(message, onConfirm){
+    document.getElementById('confirmMessage').textContent = message;
+    document.getElementById('confirmOverlay').classList.remove('hidden');
+    const cleanup = () => {
+      document.getElementById('confirmOverlay').classList.add('hidden');
+      document.getElementById('confirmOkBtn').onclick = null;
+      document.getElementById('confirmCancelBtn').onclick = null;
+    };
+    document.getElementById('confirmOkBtn').onclick = () => { cleanup(); onConfirm(); };
+    document.getElementById('confirmCancelBtn').onclick = cleanup;
+  }
+
+  // ПРОСМОТРЩИК КАРТ
+  let viewerCards = [];
+  let viewerIndex = 0;
+
+  // Инлайн-обработчики onclick в разметке карт выполняются в
+  // ГЛОБАЛЬНОЙ области видимости (не внутри замыкания приложения), поэтому
+  // локальные переменные вроде `active`/`cards` из функций рендера им
+  // недоступны — раньше это и ломало открытие просмотрщика карт. Эти три
+  // функции дают инлайн-обработчикам безопасный глобальный доступ к нужным
+  // наборам карт в любой момент клика.
+  window.getMyHandForViewer = function(){
+    const active = getActivePlayer();
+    return active ? active.cards : [];
+  };
+  window.getPlayedCardsForViewer = function(){
+    return (G.playedCards || []).map(c => c.card);
+  };
+  window.getResultCardsForViewer = function(){
+    return (G.lastResult && G.lastResult.playedCards) ? G.lastResult.playedCards.map(c => c.card) : [];
+  };
+  window.openCardViewer = function(cardsArray, startIndex) {
+    if (!cardsArray || cardsArray.length === 0) return;
+    viewerCards = cardsArray;
+    viewerIndex = Math.min(startIndex, cardsArray.length-1);
+    updateViewer();
+    document.getElementById('cardViewer').classList.remove('hidden');
+  };
+
+  function updateViewer() {
+    const card = viewerCards[viewerIndex];
+    const container = document.getElementById('cardViewerImage');
+    if (!card) return;
+    if (card.img) {
+      container.innerHTML = `<img src="${card.img}" alt="${escapeHtml(card.word || 'карта')}">`;
+    } else {
+      container.innerHTML = `<span style="font-size:4rem;">${card.emoji}</span><span style="font-size:2rem; margin-top:10px;">${escapeHtml(card.word)}</span>`;
+    }
+    document.getElementById('cardViewerCounter').textContent = `${viewerIndex+1} / ${viewerCards.length}`;
+  }
+
+  document.getElementById('cardViewerClose').addEventListener('click', () => {
+    document.getElementById('cardViewer').classList.add('hidden');
+  });
+  document.getElementById('cardViewerPrev').addEventListener('click', () => {
+    if (viewerCards.length === 0) return;
+    viewerIndex = (viewerIndex - 1 + viewerCards.length) % viewerCards.length;
+    updateViewer();
+  });
+  document.getElementById('cardViewerNext').addEventListener('click', () => {
+    if (viewerCards.length === 0) return;
+    viewerIndex = (viewerIndex + 1) % viewerCards.length;
+    updateViewer();
+  });
+  let touchStartX = 0;
+  const viewerEl = document.getElementById('cardViewer');
+  viewerEl.addEventListener('touchstart', e => {
+    touchStartX = e.touches[0].clientX;
+  }, { passive: true });
+  viewerEl.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (dx < -50) document.getElementById('cardViewerNext').click();
+    else if (dx > 50) document.getElementById('cardViewerPrev').click();
+  }, { passive: true });
+
+  // ===================================================================
+  // СЛУЧАЙНЫЙ КОД, ОБРАБОТЧИКИ
+  // ===================================================================
+  const ROOM_CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  function randomRoomCode(len){
+    let s = '';
+    for (let i=0;i<len;i++) s += ROOM_CODE_CHARS[Math.floor(Math.random()*ROOM_CODE_CHARS.length)];
+    return s;
+  }
+
+  const playerNameInput = document.getElementById('playerName');
+  const introApplyBtn = document.getElementById('introApplyBtn');
+  const avatarApplyBtn = document.getElementById('avatarApplyBtn');
+  const actionCreateBtn = document.getElementById('actionCreateBtn');
+  const actionJoinBtn = document.getElementById('actionJoinBtn');
+  const joinForm = document.getElementById('joinForm');
+  const joinBackBtn = document.getElementById('joinBackBtn');
+  const joinCodeInput = document.getElementById('joinCodeInput');
+  const joinRoomBtn = document.getElementById('joinRoomBtn');
+
+  // Куда ведёт знакомство (интро + аватар): 'create' — создать комнату,
+  // 'join' — присоединиться по коду (введённому вручную или полученному из QR-ссылки)
+  let pendingFlow = null;
+  let pendingJoinCode = '';
+
+  function renderSetupPickers(){
+    const iconPicker = document.getElementById('iconPicker');
+    const colorPicker = document.getElementById('colorPicker');
+    iconPicker.innerHTML = AVATAR_ICONS.map(ic =>
+      `<div class="icon-option ${ic===profile.icon?'selected':''}" data-icon="${ic}">${ic}</div>`
+    ).join('');
+    colorPicker.innerHTML = COLORS.map(c =>
+      `<div class="color-option ${c===profile.color?'selected':''}" data-color="${c}" style="background:${c};"></div>`
+    ).join('');
+    iconPicker.querySelectorAll('[data-icon]').forEach(el => {
+      el.addEventListener('click', () => { profile.icon = el.getAttribute('data-icon'); renderSetupPickers(); saveProfile(); });
+    });
+    colorPicker.querySelectorAll('[data-color]').forEach(el => {
+      el.addEventListener('click', () => { profile.color = el.getAttribute('data-color'); renderSetupPickers(); saveProfile(); });
+    });
+  }
+
+  introApplyBtn.addEventListener('click', () => {
+    const name = playerNameInput.value.trim();
+    if (!name) { toast('Введите имя', 'warn'); return; }
+    profile.name = name;
+    saveProfile();
+    showScreen('screenAvatar');
+    renderSetupPickers();
+  });
+
+  avatarApplyBtn.addEventListener('click', () => {
+    saveProfile();
+    if (pendingFlow === 'join' && pendingJoinCode) {
+      avatarApplyBtn.disabled = true; avatarApplyBtn.textContent = '⏳ Подключение...';
+      connectToRoom(pendingJoinCode, (ok) => {
+        avatarApplyBtn.disabled = false; avatarApplyBtn.textContent = 'Применить';
+        if (ok) {
+          toast('Вы подключились к комнате!', 'success');
+        } else {
+          pendingFlow = null; pendingJoinCode = '';
+          showScreen('screenAction');
+        }
+      });
+    } else {
+      pendingFlow = null;
+      createHostAndShowRoom();
+      startHostNetworking();
+    }
+  });
+
+  actionCreateBtn.addEventListener('click', () => {
+    pendingFlow = 'create';
+    showScreen('screenIntro');
+  });
+
+  actionJoinBtn.addEventListener('click', () => {
+    joinForm.classList.toggle('hidden');
+    if (!joinForm.classList.contains('hidden')) {
+      joinCodeInput.focus();
+    } else {
+      joinCodeInput.value = '';
+    }
+  });
+
+  joinBackBtn.addEventListener('click', () => {
+    joinForm.classList.add('hidden');
+    joinCodeInput.value = '';
+  });
+
+  joinRoomBtn.addEventListener('click', () => {
+    const code = (joinCodeInput.value || '').trim().toUpperCase();
+    if (!code) { toast('Введите код комнаты', 'warn'); return; }
+    pendingFlow = 'join';
+    pendingJoinCode = code;
+    joinForm.classList.add('hidden');
+    joinCodeInput.value = '';
+    showScreen('screenIntro');
+  });
+
+  function actuallyStartGame(){
+    if (!G.selectedDeckIds || G.selectedDeckIds.length === 0){ toast('Выберите хотя бы одну колоду', 'warn'); return; }
+    const poolSize = totalCardsInDecks(G.selectedDeckIds);
+    const minNeeded = G.players.length * 6 + (G.players.length === 2 ? 1 : 0); // +1 — резерв на карту мамонта в режиме на двоих
+    if (poolSize < minNeeded){
+      toast(`В выбранных колодах ${poolSize} карт — на ${G.players.length} игроков нужно минимум ${minNeeded}. Выберите больше колод.`, 'warn');
+      return;
+    }
+    closeDeckLobbyBrowser();
+    G.myId = HOST_ID; G.isHost = true;
+    const count = G.players.length;
+    G.gameMode = count === 2 ? '2' : count === 3 ? '3' : '4plus';
+    G.gameStarted = true;
+    G.deck = shuffle(buildPoolFromDecks(G.selectedDeckIds, new Set())); G.discard = [];
+    dealAllPlayers();
+    G.players.forEach(p => { p.position = 0; p.score = 0; p._prevPos = 0; });
+    G.turn = 1; G.currentLeaderIndex = 0; G.gameOver = false; G.stopReason = '';
+    G.awaitingContinueDecision = false; G.finishInfo = null; G.finishInfoPlayerId = null;
+    G.awaitingDeckDecision = false; G.deckDecisionInfo = null; G.deckDecisionAfterAction = null; G.deckSwitchPickerOpen = false;
+    resetRoundState();
+    G.mammothPosition = 0; G.commonSlonPosition = 0;
+    G.animCommon = { from:0, to:0, progress:1 };
+    G.animMammoth = { from:0, to:0, progress:1 };
+    G.showField = false;
+    if (G.fieldTimer) clearTimeout(G.fieldTimer);
+    G.fieldTimer = null;
+    focusPlayer(G.players[0].id);
+    showScreen('screenGame');
+    refreshRoleUI();
+    renderGame();
+    toast('Игра началась! Режим: ' + modeLabel(G.gameMode), 'success');
+  }
+
+  document.getElementById('startGameBtn').addEventListener('click', () => {
+    if (!G.isRoomHost) return;
+    if (G.players.length < 2){ toast('Нужно минимум 2 игрока', 'warn'); return; }
+    if (!G.selectedDeckIds || G.selectedDeckIds.length === 0){
+      openDeckPickerForStart();
+    } else {
+      actuallyStartGame();
+    }
+  });
+
+  document.getElementById('deckLobbyCancelBtn').addEventListener('click', closeDeckLobbyBrowser);
+  document.getElementById('deckLobbyStartBtn').addEventListener('click', actuallyStartGame);
+
+
+  document.getElementById('leaveRoomBtn').addEventListener('click', () => {
+    if (G.isRoomHost){
+      showConfirm('Закрыть комнату и вернуться на стартовый экран?', fullResetToLanding);
+    } else {
+      sendAction('leave', {});
+      stopNetworking();
+      fullResetToLanding();
+    }
+  });
+
+  document.getElementById('addBotBtnGlobal').addEventListener('click', addBot);
+  document.getElementById('clearBotsBtnGlobal').addEventListener('click', clearAllBots);
+
+  document.getElementById('resetGameBtn').addEventListener('click', () => {
+    if (!G.isRoomHost) return;
+    showConfirm('Сбросить игру? Очки, позиции и карты обнулятся. Игроки останутся в комнате.', resetGameKeepPlayers);
+  });
+
+  document.getElementById('exitGameBtn').addEventListener('click', () => {
+    if (G.isRoomHost){
+      showConfirm('Выйти из игры? Комната закроется для всех, весь прогресс будет потерян.', fullResetToLanding);
+    } else {
+      showConfirm('Покинуть игру?', () => {
+        sendAction('leave', {});
+        stopNetworking();
+        fullResetToLanding();
+      });
+    }
+  });
+
+  document.getElementById('viewFieldBtn').addEventListener('click', openManualFieldView);
+  document.getElementById('fieldCloseBtn').addEventListener('click', closeManualFieldView);
+
+  // ===================================================================
+  // ИНИЦИАЛИЗАЦИЯ
+  // ===================================================================
+  window.Game = Game;
+
+  function initGameUI(){
+    loadProfile();
+    if (profile.name) {
+      playerNameInput.value = profile.name;
+    }
+
+    let joinParam = null;
+    try {
+      const params = new URLSearchParams(location.search);
+      joinParam = params.get('join');
+    } catch(e){}
+
+    // Предупреждение про недоступность Firebase больше не показываем здесь
+    // заранее: раньше это само по себе означало, что Firebase начинает
+    // грузиться сразу при открытии страницы — а значит, даже "Игра с
+    // ботами" оказывалась в зависимости от того, доступен ли Firebase.
+    // Теперь Firebase трогаем только по факту нажатия "Создать комнату"
+    // или "Зайти в комнату" (см. ensureFirebaseInit) — офлайн-уведомление
+    // показывается там же, если понадобится.
+
+    if (joinParam) {
+      // Переход по QR-ссылке: код комнаты уже известен, сразу переходим
+      // к знакомству (имя и аватар), а подключение произойдёт после него.
+      pendingFlow = 'join';
+      pendingJoinCode = joinParam.toUpperCase();
+      showScreen('screenIntro');
+    } else if (!document.querySelector('.screen.active')) {
+      showScreen('screenAction');
+    }
+
+    startAnimation();
+  }
+
+  // ВАЖНО: раньше вся стартовая инициализация экрана (профиль, нужный
+  // начальный экран, обработка join-ссылки, запуск анимации) была привязана
+  // к событию window 'load'. Событие 'load' наступает только когда ВСЕ
+  // сетевые запросы страницы завершились — включая динамически добавленные
+  // скрипты Firebase/QRCode. Если Firebase-домены заблокированы без явной
+  // ошибки соединения (например, интернет без VPN у части провайдеров), это
+  // могло надолго задерживать 'load', а вместе с ним — и весь этот блок,
+  // из-за чего игра выглядела "зависшей"/нерабочей, хотя ни ботам, ни
+  // локальной игре сеть не нужна. Наш script-тег стоит в самом конце
+  // <body>, поэтому к моменту его выполнения DOM уже точно готов — ждать
+  // 'load' незачем, можно запускать инициализацию сразу.
+  initGameUI();
+
+})();
+</script>
+</body>
+</html>

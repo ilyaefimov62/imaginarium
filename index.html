@@ -2389,8 +2389,10 @@
     }
 
     // Игру можно закончить не только после финиша, но и прямо с экрана
-    // решения по колоде — экран окончания игры тоже показываем поверх любой фазы.
-    if (G.gameOver && phase !== 'result'){
+    // решения по колоде — экран окончания игры показываем поверх ЛЮБОЙ фазы,
+    // включая 'result': итоги последнего раунда при этом не подводим — сразу
+    // объявление победителя и таблица итоговых очков по местам.
+    if (G.gameOver){
       html = `<div class="announce">${getWinnerAnnouncementHtml()}</div>` + getFinalStandingsHtml();
       document.getElementById('windowContent').innerHTML = html;
       bindPhaseHandlers(phase, active, leader, isLeader);
@@ -2619,15 +2621,16 @@
   }
 
   // ====== ЭКРАН 2 ПОСЛЕ ГОЛОСОВАНИЯ: ПОЛЕ + ПОДРОБНЫЕ ИТОГИ ======
+  // Сюда мы попадаем, только когда игра ещё продолжается — при G.gameOver
+  // рендер уходит по отдельной ветке (чистый экран "Победитель" без разбора
+  // последнего раунда), см. её выше по коду.
   function renderFieldSummaryPhase(active){
     const result = G.lastResult;
     if (!result) return `<div class="info-text">Нет результатов</div>`;
     const isMammoth = result.mode === '2';
 
     let topHtml = '';
-    if (G.gameOver){
-      topHtml = `<div class="announce">${getWinnerAnnouncementHtml()}</div>`;
-    } else if (G.awaitingContinueDecision){
+    if (G.awaitingContinueDecision){
       let finishMsg;
       if (isMammoth){
         finishMsg = G.finishInfo || 'Кто-то дошёл до финиша!';
@@ -2650,8 +2653,6 @@
         : `+1 оч. — карту мамонта угадал ${escapeHtml(getPlayer(guessers[0])?.name || '')}`;
       html += `<div style="margin-top:4px;">${desc}</div>`;
       html += `<div>${result.mammothPoints > 0 ? '+' + result.mammothPoints : 0} оч. мамонту</div>`;
-      html += `<div style="margin-top:4px; color:var(--text-dim);">Общий слон: клетка ${result.commonSlonPosition % TRACK_TOTAL}/${TRACK_TOTAL}</div>`;
-      html += `<div style="color:var(--text-dim);">Мамонт: клетка ${result.mammothPosition % TRACK_TOTAL}/${TRACK_TOTAL}</div>`;
     } else {
       const isLeaderPlayer = active.id === result.leader.id;
       const guessers = result.guessers || [];
@@ -2677,13 +2678,10 @@
         html += `<div>${votePoints > 0 ? '+' + votePoints : 0} оч. за голоса</div>`;
         html += `<div class="result-total">Итого: +${guessPoints + votePoints} оч.</div>`;
       }
-      html += `<div style="margin-top:4px; color:var(--text-dim);">Ваша позиция: клетка ${active.position % TRACK_TOTAL}/${TRACK_TOTAL}</div>`;
     }
     html += `</div>`;
 
-    if (G.gameOver){
-      html += getFinalStandingsHtml();
-    } else if (G.awaitingContinueDecision){
+    if (G.awaitingContinueDecision){
       if (G.isRoomHost){
         html += `<div class="stack-btns">
           <button class="btn btn-success" id="continueGameBtn">Сыграть ещё круг</button>
@@ -2966,8 +2964,8 @@
   function getFinalStandingsHtml(){
     if (G.gameMode === '2'){
       return `<div class="round-summary" style="text-align:center;">
-        <div>Общий слон: клетка ${G.commonSlonPosition % TRACK_TOTAL}/${TRACK_TOTAL}</div>
-        <div>Мамонт: клетка ${G.mammothPosition % TRACK_TOTAL}/${TRACK_TOTAL}</div>
+        <div>Общий слон: клетка ${G.commonSlonPosition % TRACK_TOTAL}</div>
+        <div>Мамонт: клетка ${G.mammothPosition % TRACK_TOTAL}</div>
       </div>`;
     }
     const sorted = [...G.players].sort((a,b) => b.score - a.score);

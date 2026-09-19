@@ -375,6 +375,9 @@
       width: 100%;
       margin: 8px 0;
       text-align: center;
+      max-height: 540px;
+      overflow-y: auto;
+      padding-right: 4px;
     }
     .deck-tile {
       position: relative;
@@ -735,7 +738,7 @@
   <!-- ОВЕРЛЕЙ: ПЛИТКИ КОЛОД (ЛОББИ И ВЫБОР ПЕРЕД СТАРТОМ) -->
   <div id="deckLobbyOverlay" class="confirm-overlay hidden">
     <button class="overlay-close" id="deckLobbyCloseX">&times;</button>
-    <div class="confirm-box" style="max-width:480px;">
+    <div class="confirm-box" style="max-width:480px; max-height:88vh; overflow-y:auto;">
       <p id="deckLobbyTitle">Колоды карт</p>
       <div class="deck-tile-grid" id="deckLobbyGrid"></div>
       <div class="stack-btns">
@@ -838,6 +841,8 @@
     makeImageDeck('detstvo', 'Детство', 'detstvo', 98),
     makeImageDeck('x', 'X', 'x', 100),
     makeImageDeck('sumchatyy', 'Сумчатый', 'sumchatyy', 64),
+    makeImageDeck('light', 'Лайт', 'light', 64),
+    makeImageDeck('for_friends', 'Для друзей', 'for_friends', 64),
     // Новые колоды будут добавляться сюда так же — одной строкой через makeImageDeck(...)
   ];
   CARD_DECKS.forEach(deck => {
@@ -2167,7 +2172,7 @@
       mammothPosition:0, commonSlonPosition:0,
       activePlayerId:null, pawnAnim:{}, pawnAnimLock:{},
       animCommon:{from:0,to:0,progress:1}, animMammoth:{from:0,to:0,progress:1},
-      deck: shuffle(buildPoolFromDecks(['baza','new_year','detstvo','x','sumchatyy'], new Set())), discard:[], lastResult:null,
+      deck: shuffle(buildPoolFromDecks(['baza','new_year','detstvo','x','sumchatyy','light','for_friends'], new Set())), discard:[], lastResult:null,
       showField:false, fieldTimer:null,
     };
     qrBlock.style.display = 'none';
@@ -2871,7 +2876,11 @@
         if (selectable){
           let next = G.selectedDeckIds.slice();
           if (next.includes(id)){
-            if (next.length <= 1){ toast('Должна остаться выбрана хотя бы одна колода', 'warn'); return; }
+            // Снять выделение можно с любой колоды, включая последнюю —
+            // ограничение «хотя бы одна должна остаться выбранной»
+            // проверяется отдельно, при нажатии «Начать игру»/«Применить»,
+            // а не здесь: иначе с единственной выбранной колоды нельзя
+            // было снять выделение, чтобы выбрать другую.
             next = next.filter(x => x !== id);
           } else {
             next.push(id);

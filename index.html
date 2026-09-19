@@ -837,7 +837,6 @@
     makeImageDeck('new_year', 'New Year', 'new_year', 6),
     makeImageDeck('detstvo', 'Детство', 'detstvo', 98),
     makeImageDeck('x', 'X', 'x', 100),
-    makeImageDeck('sumchatyy', 'Сумчатый', 'sumchatyy', 64),
     // Новые колоды будут добавляться сюда так же — одной строкой через makeImageDeck(...)
   ];
   CARD_DECKS.forEach(deck => {
@@ -2167,7 +2166,7 @@
       mammothPosition:0, commonSlonPosition:0,
       activePlayerId:null, pawnAnim:{}, pawnAnimLock:{},
       animCommon:{from:0,to:0,progress:1}, animMammoth:{from:0,to:0,progress:1},
-      deck: shuffle(buildPoolFromDecks(['baza','new_year','detstvo','x','sumchatyy'], new Set())), discard:[], lastResult:null,
+      deck: shuffle(buildPoolFromDecks(['baza','new_year','detstvo','x'], new Set())), discard:[], lastResult:null,
       showField:false, fieldTimer:null,
     };
     qrBlock.style.display = 'none';
@@ -2238,7 +2237,6 @@
         ${isHostPlayer ? '🖥️' : ''}
         ${isBot ? '🤖' : ''}
         ${isOffline ? '📴' : ''}
-        <span class="score-badge">${p.score || 0}</span>
         ${(G.isRoomHost && !isHostPlayer) ? '<span class="remove-x" data-remove="'+p.id+'">✕</span>' : ''}
       `;
       playersList.appendChild(tag);
@@ -2529,7 +2527,8 @@
       const cards = G.playedCards || [];
 
       if (!isMode2 && isLeader) {
-        html = `<div class="info-text">${allVoted ? '🗳️ Голосование завершено.' : '⏳ Игроки голосуют. Ожидайте...'}</div>`;
+        const assocText = G.association ? ` «${escapeHtml(G.association)}»` : '';
+        html = `<div class="info-text">${allVoted ? '🗳️ Голосование завершено.' : '⏳ Игроки голосуют. Ожидайте...'}${assocText}</div>`;
         html += `<div class="card-grid">`;
         cards.forEach((item, idx) => {
           const isLC = idx === leaderCardIdx;
@@ -2542,10 +2541,11 @@
         html += `</div>`;
       } else {
         const alreadyVoted = votesObj[active.id] !== undefined;
+        const assocText = G.association ? ` «${escapeHtml(G.association)}»` : '';
         if (alreadyVoted) {
-          html = `<div class="info-text success">✅ Вы проголосовали. Ожидайте остальных.</div>`;
+          html = `<div class="info-text success">✅ Вы проголосовали. Ожидайте остальных.${assocText}</div>`;
         } else {
-          html = `<div class="announce">🔮 Угадайте карту ${isMode2 ? 'мамонта' : 'ведущего'}</div>`;
+          html = `<div class="announce">🔮 Угадайте карту ${isMode2 ? 'мамонта' : 'ведущего'}${assocText}</div>`;
         }
         html += `<div class="card-grid">`;
         cards.forEach((item, idx) => {
@@ -2654,6 +2654,8 @@
         : `+1 оч. — карту мамонта угадал ${escapeHtml(getPlayer(guessers[0])?.name || '')}`;
       html += `<div style="margin-top:4px;">${desc}</div>`;
       html += `<div>${result.mammothPoints > 0 ? '+' + result.mammothPoints : 0} оч. мамонту</div>`;
+      html += `<div style="margin-top:4px; color:var(--text-dim);">Общий слон: клетка ${result.commonSlonPosition % TRACK_TOTAL}</div>`;
+      html += `<div style="color:var(--text-dim);">Мамонт: клетка ${result.mammothPosition % TRACK_TOTAL}</div>`;
     } else {
       const isLeaderPlayer = active.id === result.leader.id;
       const guessers = result.guessers || [];
@@ -2679,6 +2681,10 @@
         html += `<div>${votePoints > 0 ? '+' + votePoints : 0} оч. за голоса</div>`;
         html += `<div class="result-total">Итого: +${guessPoints + votePoints} оч.</div>`;
       }
+      // Суммарный счёт за игру (не позиция на поле — она сбрасывается
+      // каждый круг, и на 2+ круге путала бы игрока, если показывать
+      // именно клетку). Позицию и так видно на игровом поле.
+      html += `<div style="margin-top:4px; color:var(--text-dim);">Всего очков: ${active.score}</div>`;
     }
     html += `</div>`;
 

@@ -840,6 +840,8 @@
     makeImageDeck('new_year', 'New Year', 'new_year', 6),
     makeImageDeck('detstvo', 'Детство', 'detstvo', 98),
     makeImageDeck('x', 'X', 'x', 100),
+    makeImageDeck('harmony', 'Гармония', 'harmony', 98),
+    makeImageDeck('odisseya', 'Одиссея', 'odisseya', 98),
     makeImageDeck('sumchatyy', 'Сумчатый', 'sumchatyy', 64),
     makeImageDeck('light', 'Лайт', 'light', 64),
     makeImageDeck('for_friends', 'Для друзей', 'for_friends', 64),
@@ -941,6 +943,12 @@
 
     mammothPosition: 0,
     commonSlonPosition: 0,
+    // Накопительный счёт мамонта за всю игру — в отличие от mammothPosition
+    // (позиция на поле, обнуляется по модулю круга при переходе на 2-й+
+    // круг), это поле только растёт и используется для итогового
+    // объявления победителя и таблицы очков. Аналог для стороны "Слон" —
+    // это p.score у игроков (он тоже не сбрасывается по кругам).
+    mammothTotalScore: 0,
 
     activePlayerId: null,
     pawnAnim: {},
@@ -1757,7 +1765,7 @@
       placedPlayers:G.placedPlayers.slice(), leaderCard:G.leaderCard, mammothCard:G.mammothCard,
       gameMode:G.gameMode, gameStarted:G.gameStarted, gameOver:G.gameOver, stopReason:G.stopReason,
       awaitingContinueDecision:G.awaitingContinueDecision, finishInfo:G.finishInfo, finishInfoPlayerId:G.finishInfoPlayerId,
-      mammothPosition:G.mammothPosition, commonSlonPosition:G.commonSlonPosition,
+      mammothPosition:G.mammothPosition, commonSlonPosition:G.commonSlonPosition, mammothTotalScore:G.mammothTotalScore,
       lastResult:G.lastResult, pendingRawCommon:G.pendingRawCommon, pendingRawMammoth:G.pendingRawMammoth,
       roomId:G.roomId,
       selectedDeckIds:(G.selectedDeckIds||[]).slice(),
@@ -1940,6 +1948,7 @@
     G.finishInfoPlayerId = remote.finishInfoPlayerId;
     G.mammothPosition = remote.mammothPosition;
     G.commonSlonPosition = remote.commonSlonPosition;
+    G.mammothTotalScore = remote.mammothTotalScore || 0;
     G.lastResult = remote.lastResult;
     G.pendingRawCommon = remote.pendingRawCommon;
     G.pendingRawMammoth = remote.pendingRawMammoth;
@@ -2169,10 +2178,10 @@
       pendingRawCommon:null, pendingRawMammoth:null,
       selectedDeckIds:[], awaitingDeckDecision:false, deckDecisionInfo:null,
       deckSwitchPickerOpen:false, pendingAdvanceMode2:false, playerPresence:{},
-      mammothPosition:0, commonSlonPosition:0,
+      mammothPosition:0, commonSlonPosition:0, mammothTotalScore:0,
       activePlayerId:null, pawnAnim:{}, pawnAnimLock:{},
       animCommon:{from:0,to:0,progress:1}, animMammoth:{from:0,to:0,progress:1},
-      deck: shuffle(buildPoolFromDecks(['baza','new_year','detstvo','x','sumchatyy','light','for_friends'], new Set())), discard:[], lastResult:null,
+      deck: shuffle(buildPoolFromDecks(['baza','new_year','detstvo','x','harmony','odisseya','sumchatyy','light','for_friends'], new Set())), discard:[], lastResult:null,
       showField:false, fieldTimer:null,
     };
     qrBlock.style.display = 'none';
@@ -2190,7 +2199,7 @@
     G.playedCards = [];
     G.selectedCardIndex = -1;
     G.selectedCardForPlayer = {}; G.selectedVoteForPlayer = {}; G.selectedCards2 = {};
-    G.mammothPosition = 0; G.commonSlonPosition = 0;
+    G.mammothPosition = 0; G.commonSlonPosition = 0; G.mammothTotalScore = 0;
     G.gameOver = false; G.stopReason = '';
     G.awaitingContinueDecision = false; G.finishInfo = null; G.finishInfoPlayerId = null;
     G.pendingRawCommon = null; G.pendingRawMammoth = null;
@@ -2660,8 +2669,8 @@
         : `+1 оч. — карту мамонта угадал ${escapeHtml(getPlayer(guessers[0])?.name || '')}`;
       html += `<div style="margin-top:4px;">${desc}</div>`;
       html += `<div>${result.mammothPoints > 0 ? '+' + result.mammothPoints : 0} оч. мамонту</div>`;
-      html += `<div style="margin-top:4px; color:var(--text-dim);">Общий слон: клетка ${result.commonSlonPosition % TRACK_TOTAL}</div>`;
-      html += `<div style="color:var(--text-dim);">Мамонт: клетка ${result.mammothPosition % TRACK_TOTAL}</div>`;
+      html += `<div style="margin-top:4px; color:var(--text-dim);">Всего очков — Слон: ${active.score}</div>`;
+      html += `<div style="color:var(--text-dim);">Всего очков — Мамонт: ${G.mammothTotalScore}</div>`;
     } else {
       const isLeaderPlayer = active.id === result.leader.id;
       const guessers = result.guessers || [];
@@ -2970,23 +2979,39 @@
 
   function getWinnerAnnouncementHtml(){
     if (G.gameMode === '2'){
-      if (G.commonSlonPosition >= TRACK_TOTAL) return '🎉 Победа! Общий слон достиг финиша!';
-      if (G.mammothPosition >= TRACK_TOTAL) return '💀 Мамонт победил!';
-      return '🏁 Игра окончена!';
+      // Сравниваем НАКОПИТЕЛЬНЫЕ очки (p.score у игроков-команды "Слон" и
+      // G.mammothTotalScore у мамонта) — а не позицию на поле: позиция
+      // обнуляется по модулю при переходе на 2-й и последующие круги, а
+      // очки должны продолжать расти. Победитель объявляется всегда,
+      // независимо от того, как закончилась игра — дошли до финиша или
+      // кончилась колода.
+      const teamScore = (G.players[0] && G.players[0].score) || 0;
+      const mammothScore = G.mammothTotalScore || 0;
+      if (teamScore === mammothScore) return `🏁 Игра окончена!<br>Ничья: ${teamScore} на ${mammothScore}`;
+      const winnerName = teamScore > mammothScore ? 'Слон' : 'Мамонт';
+      return `🏁 Игра окончена!<br>Победитель: ${winnerName}`;
     }
     const winner = [...G.players].sort((a,b) => b.score - a.score)[0];
-    return winner ? `🏁 Игра окончена! Победитель: ${escapeHtml(winner.name)}` : '🏁 Игра окончена!';
+    return winner ? `🏁 Игра окончена!<br>Победитель: ${escapeHtml(winner.name)}` : '🏁 Игра окончена!';
   }
 
   function getFinalStandingsHtml(){
     if (G.gameMode === '2'){
-      return `<div class="round-summary" style="text-align:center;">
-        <div>Общий слон: клетка ${G.commonSlonPosition % TRACK_TOTAL}</div>
-        <div>Мамонт: клетка ${G.mammothPosition % TRACK_TOTAL}</div>
-      </div>`;
+      const teamScore = (G.players[0] && G.players[0].score) || 0;
+      const mammothScore = G.mammothTotalScore || 0;
+      const rows = [
+        { name:'Слон', score:teamScore },
+        { name:'Мамонт', score:mammothScore },
+      ].sort((a,b) => b.score - a.score);
+      let html = `<div class="round-summary"><div class="rs-title">Итоги игры:</div>`;
+      rows.forEach((r, i) => {
+        html += `<div>${i+1}. ${escapeHtml(r.name)} — ${r.score} оч.</div>`;
+      });
+      html += `</div>`;
+      return html;
     }
     const sorted = [...G.players].sort((a,b) => b.score - a.score);
-    let html = `<div class="round-summary"><div class="rs-title">🏆 Итоговый счёт</div>`;
+    let html = `<div class="round-summary"><div class="rs-title">Итоги игры:</div>`;
     sorted.forEach((p, i) => {
       html += `<div>${i+1}. ${escapeHtml(p.name)} — ${p.score} оч.</div>`;
     });
@@ -3287,6 +3312,9 @@
     else { mammothPoints = 0; playerPoints = 2; }
 
     G.players.forEach(p => { p.score += playerPoints; });
+    // Накопительный счёт мамонта — растёт всегда, не подвержен обнулению
+    // по модулю круга (в отличие от mammothPosition ниже).
+    G.mammothTotalScore += mammothPoints;
 
     const rawCommon = G.commonSlonPosition + playerPoints;
     const rawMammoth = G.mammothPosition + mammothPoints;
@@ -3300,7 +3328,7 @@
     if (reachedFinish){
       G.awaitingContinueDecision = true;
       G.finishInfo = rawCommon >= TRACK_TOTAL
-        ? `🎉 Общий слон дошёл до финиша (${G.commonSlonPosition} оч.)!`
+        ? `🎉 Слон дошёл до финиша (${G.commonSlonPosition} оч.)!`
         : `💀 Мамонт дошёл до финиша (${G.mammothPosition} оч.)!`;
     }
 
@@ -3591,7 +3619,7 @@
     G.awaitingContinueDecision = false; G.finishInfo = null; G.finishInfoPlayerId = null;
     G.awaitingDeckDecision = false; G.deckDecisionInfo = null; G.deckDecisionAfterAction = null; G.deckSwitchPickerOpen = false;
     resetRoundState();
-    G.mammothPosition = 0; G.commonSlonPosition = 0;
+    G.mammothPosition = 0; G.commonSlonPosition = 0; G.mammothTotalScore = 0;
     G.animCommon = { from:0, to:0, progress:1 };
     G.animMammoth = { from:0, to:0, progress:1 };
     G.showField = false;

@@ -842,6 +842,8 @@
     makeImageDeck('x', 'X', 'x', 100),
     makeImageDeck('harmony', 'Гармония', 'harmony', 98),
     makeImageDeck('odisseya', 'Одиссея', 'odisseya', 98),
+    makeImageDeck('pandora', 'Пандора', 'pandora', 98),
+    makeImageDeck('kassiopea', 'Кассиопея', 'kassiopea', 98),
     makeImageDeck('sumchatyy', 'Сумчатый', 'sumchatyy', 64),
     makeImageDeck('light', 'Лайт', 'light', 64),
     makeImageDeck('for_friends', 'Для друзей', 'for_friends', 64),
@@ -949,6 +951,11 @@
     // объявления победителя и таблицы очков. Аналог для стороны "Слон" —
     // это p.score у игроков (он тоже не сбрасывается по кругам).
     mammothTotalScore: 0,
+    // Какой вариант режима на двоих выбран: null (ещё не выбран, экран
+    // выбора), 'mammoth' — искать карту мамонта (старые правила), 'leader' —
+    // искать карту ведущего (новый вариант). Выбирается один раз в начале
+    // игры и сохраняется до конца игры/сброса.
+    mode2SubMode: null,
 
     activePlayerId: null,
     pawnAnim: {},
@@ -967,6 +974,11 @@
   function getActivePlayer(){ return getPlayer(G.activePlayerId); }
   function getLeader(){ return G.players[G.currentLeaderIndex] || null; }
   function isBotId(id){ return G.botPlayers.includes(id); }
+  // true — используется механика "ищем карту мамонта" (голосуют оба игрока,
+  // оба выкладывают по 2 карты). false — либо обычный режим, либо новый
+  // вариант "ищем карту ведущего" на двоих, который по механике карт/
+  // голосования устроен как обычные режимы (один ведущий, один голосующий).
+  function isMammothGuessMode(){ return G.gameMode === '2' && G.mode2SubMode !== 'leader'; }
   function getPlayerColor(id){ return getPlayer(id)?.color || '#fff'; }
   function colorName(name, color){ return `<span style="color:${color}; font-weight:700;">${escapeHtml(name)}</span>`; }
   function colorPlayerName(id){
@@ -1185,7 +1197,10 @@
     return pool;
   }
   function calcNeededCards(){
-    if (G.gameMode === '2') return G.players.length * 6 + 1; // полная пересдача рук + карта мамонта
+    if (G.gameMode === '2'){
+      if (G.mode2SubMode === 'leader') return 5; // 1 на пополнение руки ведущего + 4 карты мамонта на стол
+      return G.players.length * 6 + 1; // "найти карту мамонта": полная пересдача рук + карта мамонта
+    }
     const refillNeeded = G.players.reduce((sum,p) => sum + Math.max(0, 6-(p.cards?p.cards.length:0)), 0);
     const modeExtra = G.gameMode === '3' ? 2 : 0;
     return refillNeeded + modeExtra;
@@ -1296,7 +1311,7 @@
     ctx.restore();
   }
 
-  function drawPawn(px, py, r, emoji, bgColor, isHighlighted){
+  function drawPawn(px, py, r, emoji, bgColor, isHighlighted, borderColor){
     ctx.save();
     ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 2;
     ctx.beginPath(); ctx.arc(px, py, r, 0, 2*Math.PI);
@@ -1304,7 +1319,10 @@
     ctx.fill();
     ctx.shadowColor = 'transparent';
     ctx.lineWidth = isHighlighted ? 2.5 : 1.5;
-    ctx.strokeStyle = isHighlighted ? '#fff3c4' : 'rgba(255,255,255,.5)';
+    // borderColor — явно заданный цвет окантовки (например, для фишки
+    // мамонта — свой оттенок, а не общая жёлтая подсветка "верхней в
+    // стопке" фишки, из-за которой мамонта было легко перепутать со слоном).
+    ctx.strokeStyle = borderColor || (isHighlighted ? '#fff3c4' : 'rgba(255,255,255,.5)');
     ctx.stroke();
     ctx.font = Math.round(r*1.5) + 'px sans-serif';
     ctx.textAlign='center'; ctx.textBaseline='middle';
@@ -1396,13 +1414,17 @@
       ];
       const offsets = computeStackOffsets(items);
 
-      const drawOne = (key, pos, emoji, bg, r) => {
+      const drawOne = (key, pos, emoji, bg, r, border) => {
         const off = offsets[key] || { dx:0, dy:0, front:true };
         const t = getTrackPosition(pos);
         const px = t.x*w + off.dx*offR, py = t.y*h + off.dy*offR - r*0.5;
-        drawPawn(px, py, r, emoji, bg, off.front);
+        drawPawn(px, py, r, emoji, bg, off.front, border);
       };
-      drawOne('mammoth', mPos, '🦣', '#7a2e2e', rBase*1.1);
+      // Фишка мамонта — свой цвет и для заливки, и для окантовки (на тон
+      // светлее одного и того же коричнево-красного), чтобы не путать её
+      // с жёлтой фишкой слона даже когда мамонт оказывается "спереди" в
+      // стопке фишек на одной клетке.
+      drawOne('mammoth', mPos, '🦣', '#da827f', rBase*1.1, '#da827f');
       drawOne('slon', cPos, '🐘', '#f5c842', rBase);
     } else {
       const items = G.players.map(p => {
@@ -1763,7 +1785,7 @@
       association:G.association, votes:{...G.votes}, votes2:{...G.votes2},
       leaderCardIndex:G.leaderCardIndex, playedCards:G.playedCards.map(c=>({...c})),
       placedPlayers:G.placedPlayers.slice(), leaderCard:G.leaderCard, mammothCard:G.mammothCard,
-      gameMode:G.gameMode, gameStarted:G.gameStarted, gameOver:G.gameOver, stopReason:G.stopReason,
+      gameMode:G.gameMode, gameStarted:G.gameStarted, gameOver:G.gameOver, stopReason:G.stopReason, mode2SubMode:G.mode2SubMode,
       awaitingContinueDecision:G.awaitingContinueDecision, finishInfo:G.finishInfo, finishInfoPlayerId:G.finishInfoPlayerId,
       mammothPosition:G.mammothPosition, commonSlonPosition:G.commonSlonPosition, mammothTotalScore:G.mammothTotalScore,
       lastResult:G.lastResult, pendingRawCommon:G.pendingRawCommon, pendingRawMammoth:G.pendingRawMammoth,
@@ -1795,6 +1817,10 @@
       case 'submitAssociation':
         G.activePlayerId = playerId; G.selectedCardIndex = data.cardIndex;
         Game.submitAssociation(data.association || '');
+        break;
+      case 'submitAssociationMode2Leader':
+        G.activePlayerId = playerId; G.selectedCardIndex = data.cardIndex;
+        Game.submitAssociationMode2Leader(data.association || '');
         break;
       case 'submitAssociation2':
         G.activePlayerId = playerId;
@@ -1940,6 +1966,7 @@
     G.leaderCard = remote.leaderCard;
     G.mammothCard = remote.mammothCard;
     G.gameMode = remote.gameMode;
+    G.mode2SubMode = remote.mode2SubMode != null ? remote.mode2SubMode : null;
     G.gameStarted = remote.gameStarted;
     G.gameOver = remote.gameOver;
     G.stopReason = remote.stopReason;
@@ -2178,10 +2205,10 @@
       pendingRawCommon:null, pendingRawMammoth:null,
       selectedDeckIds:[], awaitingDeckDecision:false, deckDecisionInfo:null,
       deckSwitchPickerOpen:false, pendingAdvanceMode2:false, playerPresence:{},
-      mammothPosition:0, commonSlonPosition:0, mammothTotalScore:0,
+      mammothPosition:0, commonSlonPosition:0, mammothTotalScore:0, mode2SubMode:null,
       activePlayerId:null, pawnAnim:{}, pawnAnimLock:{},
       animCommon:{from:0,to:0,progress:1}, animMammoth:{from:0,to:0,progress:1},
-      deck: shuffle(buildPoolFromDecks(['baza','new_year','detstvo','x','harmony','odisseya','sumchatyy','light','for_friends'], new Set())), discard:[], lastResult:null,
+      deck: shuffle(buildPoolFromDecks(['baza','new_year','detstvo','x','harmony','odisseya','pandora','kassiopea','sumchatyy','light','for_friends'], new Set())), discard:[], lastResult:null,
       showField:false, fieldTimer:null,
     };
     qrBlock.style.display = 'none';
@@ -2199,7 +2226,7 @@
     G.playedCards = [];
     G.selectedCardIndex = -1;
     G.selectedCardForPlayer = {}; G.selectedVoteForPlayer = {}; G.selectedCards2 = {};
-    G.mammothPosition = 0; G.commonSlonPosition = 0; G.mammothTotalScore = 0;
+    G.mammothPosition = 0; G.commonSlonPosition = 0; G.mammothTotalScore = 0; G.mode2SubMode = null;
     G.gameOver = false; G.stopReason = '';
     G.awaitingContinueDecision = false; G.finishInfo = null; G.finishInfoPlayerId = null;
     G.pendingRawCommon = null; G.pendingRawMammoth = null;
@@ -2371,8 +2398,8 @@
       return { cls:'pending', icon:'…' };
     }
     if (G.phase === 'voting'){
-      if (G.gameMode !== '2' && id === leader.id) return null;
-      const votes = G.gameMode === '2' ? G.votes2 : G.votes;
+      if (!isMammothGuessMode() && id === leader.id) return null;
+      const votes = isMammothGuessMode() ? G.votes2 : G.votes;
       if (votes[id] !== undefined) return { cls:'done', icon:'✓' };
       return { cls:'pending', icon:'…' };
     }
@@ -2424,9 +2451,20 @@
     else if (phase === 'waiting'){
       html = `<div class="info-text">Ожидание начала игры...</div>`;
     }
+    else if (phase === 'mode2choice'){
+      if (G.isRoomHost){
+        html = `<div class="announce">Выберите режим игры:</div>`;
+        html += `<div class="stack-btns">
+          <button class="btn action-btn" id="mode2ChooseMammothBtn">Найти карту мамонта</button>
+          <button class="btn action-btn" id="mode2ChooseLeaderBtn">Найти карту ведущего</button>
+        </div>`;
+      } else {
+        html = `<div class="info-text">⏳ Хост выбирает режим игры...</div>`;
+      }
+    }
     else if (phase === 'association'){
       if (isLeader) {
-        if (G.gameMode === '2') {
+        if (isMammothGuessMode()) {
           // Режим на двоих: ведущий придумывает ассоциацию НЕ глядя в
           // свои карты — выбора карты на этом шаге нет вообще (карты обе
           // стороны выберут позже, на шаге "placing").
@@ -2435,7 +2473,7 @@
           html += `<button class="btn action-btn" id="submitAssocBtn2">📨 Отправить</button>`;
         } else {
           // Ведущий – теперь как у игрока по размеру (big-sub), но с градиентом
-          html = `<div class="announce">Придумайте ассоциацию и выберите карту</div>`;
+          html = `<div class="announce">Придумайте ассоциацию (одно слово) и выберите карту</div>`;
           html += `<div class="input-group" style="width:100%;"><input type="text" id="assocInput" class="input-big" placeholder="Ассоциация" value="${escapeHtml(G.associationInput)}"></div>`;
           html += `<div class="card-grid">`;
           (active.cards || []).forEach((card, idx) => {
@@ -2456,7 +2494,7 @@
         // для обычных режимов; в режиме на двоих карты для этого раунда
         // ещё даже не имеют смысла показывать так (там другие правила
         // выбора карт на шаге "placing"), поэтому здесь не показываем.
-        if (G.gameMode !== '2') {
+        if (G.gameMode !== '2' || G.mode2SubMode === 'leader') {
           html += `<div class="card-grid" style="margin-top:16px;">`;
           (active.cards || []).forEach((card, idx) => {
             html += `<div class="card no-select" onclick="openCardViewer(window.getMyHandForViewer(), ${idx})">`;
@@ -2534,7 +2572,7 @@
       }
     }
     else if (phase === 'voting'){
-      const isMode2 = G.gameMode === '2';
+      const isMode2 = isMammothGuessMode();
       const votesObj = isMode2 ? G.votes2 : G.votes;
       const votersNeeded = isMode2 ? G.players.length : G.players.filter(p => p.id !== leader.id).length;
       const allVoted = Object.keys(votesObj).length >= votersNeeded;
@@ -2662,15 +2700,22 @@
     let html = topHtml;
     html += `<div class="round-summary"><div class="rs-title">📊 Итоги раунда</div>`;
     if (isMammoth){
-      const guessers = result.guessers || [];
-      const total = guessers.length;
-      let desc = total === 0 ? '0 оч. — никто не угадал карту мамонта'
-        : total === 2 ? '+2 оч. — оба угадали карту мамонта'
-        : `+1 оч. — карту мамонта угадал ${escapeHtml(getPlayer(guessers[0])?.name || '')}`;
-      html += `<div style="margin-top:4px;">${desc}</div>`;
-      html += `<div>${result.mammothPoints > 0 ? '+' + result.mammothPoints : 0} оч. мамонту</div>`;
-      html += `<div style="margin-top:4px; color:var(--text-dim);">Всего очков — Слон: ${active.score}</div>`;
-      html += `<div style="color:var(--text-dim);">Всего очков — Мамонт: ${G.mammothTotalScore}</div>`;
+      if (result.subMode === 'leader'){
+        const guessedRight = (result.guessers||[]).length > 0;
+        const desc = guessedRight ? '+2 оч. — карту ведущего угадали' : '0 оч. — карту ведущего не угадали';
+        html += `<div style="margin-top:4px;">${desc}</div>`;
+        html += `<div>${result.mammothPoints > 0 ? '+' + result.mammothPoints : 0} оч. мамонту</div>`;
+      } else {
+        const guessers = result.guessers || [];
+        const total = guessers.length;
+        let desc = total === 0 ? '0 оч. — никто не угадал карту мамонта'
+          : total === 2 ? '+2 оч. — оба угадали карту мамонта'
+          : `+1 оч. — карту мамонта угадал ${escapeHtml(getPlayer(guessers[0])?.name || '')}`;
+        html += `<div style="margin-top:4px;">${desc}</div>`;
+        html += `<div>${result.mammothPoints > 0 ? '+' + result.mammothPoints : 0} оч. мамонту</div>`;
+      }
+      html += `<div style="margin-top:4px; color:var(--text-dim);">Слон — ${active.score} оч.</div>`;
+      html += `<div style="color:var(--text-dim);">Мамонт — ${G.mammothTotalScore} оч.</div>`;
     } else {
       const isLeaderPlayer = active.id === result.leader.id;
       const guessers = result.guessers || [];
@@ -2699,7 +2744,7 @@
       // Суммарный счёт за игру (не позиция на поле — она сбрасывается
       // каждый круг, и на 2+ круге путала бы игрока, если показывать
       // именно клетку). Позицию и так видно на игровом поле.
-      html += `<div style="margin-top:4px; color:var(--text-dim);">Всего очков: ${active.score}</div>`;
+      html += `<div style="margin-top:4px; color:var(--text-dim);">${escapeHtml(active.name)} — ${active.score} оч.</div>`;
     }
     html += `</div>`;
 
@@ -2735,14 +2780,19 @@
 
   // ====== ОБРАБОТЧИКИ ФАЗ ======
   function bindPhaseHandlers(phase, active, leader, isLeader){
-    if (phase === 'association' && isLeader){
-      if (G.gameMode !== '2'){
+    if (phase === 'mode2choice' && G.isRoomHost){
+      const mammothBtn = document.getElementById('mode2ChooseMammothBtn');
+      if (mammothBtn) mammothBtn.addEventListener('click', () => Game.chooseMode2SubMode('mammoth'));
+      const leaderBtn = document.getElementById('mode2ChooseLeaderBtn');
+      if (leaderBtn) leaderBtn.addEventListener('click', () => Game.chooseMode2SubMode('leader'));
+    } else if (phase === 'association' && isLeader){
+      if (!isMammothGuessMode()){
         const btn = document.getElementById('submitAssocBtn'), input = document.getElementById('assocInput');
         if (btn && input){
           input.addEventListener('input', () => { G.associationInput = input.value; });
           btn.addEventListener('click', () => {
             if (G.selectedCardIndex === -1) return toast('Сначала выберите карту', 'warn');
-            Game.submitAssociation(input.value.trim());
+            G.gameMode === '2' ? Game.submitAssociationMode2Leader(input.value.trim()) : Game.submitAssociation(input.value.trim());
           });
         }
       } else {
@@ -2753,7 +2803,7 @@
         }
       }
     } else if (phase === 'placing'){
-      if (G.gameMode === '2'){
+      if (isMammothGuessMode()){
         const btn = document.getElementById('submitCardBtn2');
         if (btn) btn.addEventListener('click', () => {
           if ((G.selectedCards2[active.id]||[]).length < 2) return toast('Выберите 2 карты', 'warn');
@@ -2767,10 +2817,11 @@
         });
       }
     } else if (phase === 'voting'){
-      const btn = G.gameMode === '2' ? document.getElementById('voteSubmitBtn2') : (!isLeader ? document.getElementById('voteSubmitBtn') : null);
+      const isMode2 = isMammothGuessMode();
+      const btn = isMode2 ? document.getElementById('voteSubmitBtn2') : (!isLeader ? document.getElementById('voteSubmitBtn') : null);
       if (btn) btn.addEventListener('click', () => {
         if (G.selectedVoteForPlayer[active.id] === undefined) return toast('Выберите карту', 'warn');
-        G.gameMode === '2' ? Game.submitVote2() : Game.submitVote();
+        isMode2 ? Game.submitVote2() : Game.submitVote();
       });
     }
 
@@ -3115,7 +3166,14 @@
     G.turn++;
     G.currentLeaderIndex = (G.currentLeaderIndex + 1) % G.players.length;
     resetRoundState();
-    dealAllPlayers();
+    if (G.mode2SubMode === 'leader'){
+      // В этом варианте карты не пересдаются полностью каждый ход — свою
+      // карту выложил только ведущий, вот ему руку и пополняем; у второго
+      // игрока рука вообще не трогается (он ничего не разыгрывал).
+      G.players.forEach(p => refillHand(p));
+    } else {
+      dealAllPlayers();
+    }
     focusPlayer(getLeader()?.id || G.players[0]?.id || HOST_ID);
     G.showField = false;
     if (G.fieldTimer) clearTimeout(G.fieldTimer);
@@ -3169,6 +3227,14 @@
     G.selectedVoteForPlayer[active.id] = idx; renderGame();
   };
 
+  Game.chooseMode2SubMode = function(mode){
+    if (!G.isRoomHost || G.phase !== 'mode2choice' || G.gameMode !== '2') return;
+    if (mode !== 'mammoth' && mode !== 'leader') return;
+    G.mode2SubMode = mode;
+    G.phase = 'association';
+    renderGame();
+  };
+
   Game.submitAssociation = function(assoc){
     if (G.phase !== 'association' || getActivePlayer()?.id !== getLeader()?.id) return;
     if (G.selectedCardIndex === -1) return toast('Выберите карту', 'warn');
@@ -3179,6 +3245,33 @@
     G.association = assoc; G.associationInput = '';
     G.phase = 'placing'; G.placedPlayers = []; G.playedCards = []; G.leaderCardIndex = -1; G.selectedCardIndex = -1;
     G.selectedCardForPlayer = {}; G.selectedVoteForPlayer = {};
+    const firstOther = G.players.find(p => p.id !== leader.id);
+    if (firstOther) focusPlayer(firstOther.id);
+    renderGame();
+  };
+
+  // Режим на двоих, вариант "найти карту ведущего": ведущий выбирает свою
+  // карту и называет ассоциацию (как в обычном режиме) — но отдельного шага
+  // "выкладывания карт" вторым игроком тут нет. Вместо этого сразу же к
+  // карте ведущего подмешиваются 4 "карты мамонта", вслепую взятые из
+  // колоды, и игра сразу переходит к голосованию.
+  Game.submitAssociationMode2Leader = function(assoc){
+    if (G.phase !== 'association' || getActivePlayer()?.id !== getLeader()?.id) return;
+    if (G.selectedCardIndex === -1) return toast('Выберите карту', 'warn');
+    if (!G.isRoomHost){ sendAction('submitAssociationMode2Leader', { cardIndex:G.selectedCardIndex, association:assoc }); return; }
+    const leader = getLeader(); const leaderPlayer = getPlayer(leader.id);
+    G.leaderCard = leaderPlayer.cards[G.selectedCardIndex];
+    leaderPlayer.cards.splice(G.selectedCardIndex, 1);
+    G.association = assoc; G.associationInput = '';
+    G.selectedCardIndex = -1;
+    G.playedCards = [{ playerId: leader.id, card: G.leaderCard }];
+    for (let i=0;i<4;i++){
+      const c = drawFromDeck();
+      if (c) G.playedCards.push({ playerId:'bot_card_'+i, card:c });
+    }
+    shuffle(G.playedCards);
+    G.leaderCardIndex = G.playedCards.findIndex(p => p.playerId === leader.id);
+    G.phase = 'voting'; G.votes = {}; G.selectedVoteForPlayer = {};
     const firstOther = G.players.find(p => p.id !== leader.id);
     if (firstOther) focusPlayer(firstOther.id);
     renderGame();
@@ -3258,7 +3351,7 @@
   };
 
   Game.submitVote = function(){
-    if (G.phase !== 'voting' || G.gameMode === '2') return;
+    if (G.phase !== 'voting' || isMammothGuessMode()) return;
     const active = getActivePlayer(); const leader = getLeader();
     if (!active || !leader) return;
     if (active.id === leader.id) return toast('Ведущий не голосует', 'warn');
@@ -3273,15 +3366,16 @@
     renderGame();
 
     const others = G.players.filter(p => p.id !== leader.id);
-    if (Object.keys(G.votes).length >= others.length) calculateResultsStandard();
-    else {
+    if (Object.keys(G.votes).length >= others.length){
+      G.gameMode === '2' ? calculateResultsMode2Leader() : calculateResultsStandard();
+    } else {
       const notVoted = others.filter(p => G.votes[p.id] === undefined);
       if (notVoted.length){ focusPlayer(notVoted[0].id); renderGame(); }
     }
   };
 
   Game.submitVote2 = function(){
-    if (G.phase !== 'voting' || G.gameMode !== '2') return;
+    if (G.phase !== 'voting' || !isMammothGuessMode()) return;
     const active = getActivePlayer(); if (!active) return;
     if (G.votes2[active.id] !== undefined) return;
     const chosenIdx = G.selectedVoteForPlayer[active.id];
@@ -3333,7 +3427,7 @@
     }
 
     G.lastResult = {
-      mode:'2', votes:{...G.votes2}, guessers, mammothPoints, playerPoints,
+      mode:'2', subMode:'mammoth', votes:{...G.votes2}, guessers, mammothPoints, playerPoints,
       mammothPosition:G.mammothPosition, commonSlonPosition:G.commonSlonPosition,
       reachedFinish, leader:getLeader(), association:G.association,
       playedCards:[...G.playedCards], leaderCardIndex:G.leaderCardIndex,
@@ -3343,6 +3437,52 @@
     G.playedCards.forEach(item => { if (item.card) G.discard.push(item.card); });
     G.playedCards = [];
     if (G.mammothCard){ G.discard.push(G.mammothCard); G.mammothCard = null; }
+
+    G.phase = 'result';
+    focusPlayer(HOST_ID);
+    renderGame();
+  }
+
+  // Режим на двоих, вариант "найти карту ведущего": угадал — команда
+  // получает 2 очка, мамонт — 0; не угадал — мамонт получает 3 очка,
+  // команда — 0. Голосующий здесь всегда один (второй игрок, не ведущий).
+  function calculateResultsMode2Leader(){
+    const leader = getLeader();
+    const voter = G.players.find(p => p.id !== leader.id);
+    const guessedRight = voter ? G.votes[voter.id] === G.leaderCardIndex : false;
+    const playerPoints = guessedRight ? 2 : 0;
+    const mammothPoints = guessedRight ? 0 : 3;
+
+    G.players.forEach(p => { p.score += playerPoints; });
+    G.mammothTotalScore += mammothPoints;
+
+    const rawCommon = G.commonSlonPosition + playerPoints;
+    const rawMammoth = G.mammothPosition + mammothPoints;
+    const reachedFinish = rawCommon >= TRACK_TOTAL || rawMammoth >= TRACK_TOTAL;
+
+    G.commonSlonPosition = reachedFinish ? Math.min(rawCommon, TRACK_TOTAL) : rawCommon;
+    G.mammothPosition = reachedFinish ? Math.min(rawMammoth, TRACK_TOTAL) : rawMammoth;
+    G.pendingRawCommon = rawCommon;
+    G.pendingRawMammoth = rawMammoth;
+
+    if (reachedFinish){
+      G.awaitingContinueDecision = true;
+      G.finishInfo = rawCommon >= TRACK_TOTAL
+        ? `🎉 Слон дошёл до финиша (${G.commonSlonPosition} оч.)!`
+        : `💀 Мамонт дошёл до финиша (${G.mammothPosition} оч.)!`;
+    }
+
+    G.lastResult = {
+      mode:'2', subMode:'leader', votes:{...G.votes}, guessers: (voter && guessedRight) ? [voter.id] : [], mammothPoints, playerPoints,
+      mammothPosition:G.mammothPosition, commonSlonPosition:G.commonSlonPosition,
+      reachedFinish, leader, association:G.association,
+      playedCards:[...G.playedCards], leaderCardIndex:G.leaderCardIndex,
+      pointsGuess:{}, pointsVotes:{}, totalVoters:1,
+    };
+
+    G.playedCards.forEach(item => { if (item.card) G.discard.push(item.card); });
+    G.playedCards = [];
+    if (G.leaderCard){ G.discard.push(G.leaderCard); G.leaderCard = null; }
 
     G.phase = 'result';
     focusPlayer(HOST_ID);
@@ -3602,7 +3742,10 @@
   function actuallyStartGame(){
     if (!G.selectedDeckIds || G.selectedDeckIds.length === 0){ toast('Выберите хотя бы одну колоду', 'warn'); return; }
     const poolSize = totalCardsInDecks(G.selectedDeckIds);
-    const minNeeded = G.players.length * 6 + (G.players.length === 2 ? 1 : 0); // +1 — резерв на карту мамонта в режиме на двоих
+    // +4 — запас на любой из двух вариантов режима на двоих (варианту
+    // "найти карту ведущего" в первом же раунде нужно 4 карты мамонта,
+    // это больше, чем нужно варианту "найти карту мамонта").
+    const minNeeded = G.players.length * 6 + (G.players.length === 2 ? 4 : 0);
     if (poolSize < minNeeded){
       toast(`В выбранных колодах ${poolSize} карт — на ${G.players.length} игроков нужно минимум ${minNeeded}. Выберите больше колод.`, 'warn');
       return;
@@ -3611,6 +3754,7 @@
     G.myId = HOST_ID; G.isHost = true;
     const count = G.players.length;
     G.gameMode = count === 2 ? '2' : count === 3 ? '3' : '4plus';
+    G.mode2SubMode = null;
     G.gameStarted = true;
     G.deck = shuffle(buildPoolFromDecks(G.selectedDeckIds, new Set())); G.discard = [];
     dealAllPlayers();
@@ -3619,6 +3763,13 @@
     G.awaitingContinueDecision = false; G.finishInfo = null; G.finishInfoPlayerId = null;
     G.awaitingDeckDecision = false; G.deckDecisionInfo = null; G.deckDecisionAfterAction = null; G.deckSwitchPickerOpen = false;
     resetRoundState();
+    if (G.gameMode === '2'){
+      // Прежде чем начинать первый раунд, хост должен выбрать вариант
+      // режима на двоих — "найти карту мамонта" (старые правила) или
+      // "найти карту ведущего" (новый вариант). До выбора обычная фаза
+      // раунда ('association') не начинается.
+      G.phase = 'mode2choice';
+    }
     G.mammothPosition = 0; G.commonSlonPosition = 0; G.mammothTotalScore = 0;
     G.animCommon = { from:0, to:0, progress:1 };
     G.animMammoth = { from:0, to:0, progress:1 };

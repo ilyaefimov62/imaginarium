@@ -376,6 +376,7 @@
       margin: 8px 0;
       text-align: center;
       overflow-y: auto;
+      scrollbar-gutter: stable;
       padding-right: 4px;
     }
     .deck-tile {
@@ -2953,8 +2954,6 @@
         }
       });
     });
-
-    fitDeckLobbyGridHeight();
   }
 
   // Высота плитки зависит от ширины экрана (картинка масштабируется по
@@ -3002,6 +3001,7 @@
     document.getElementById('deckLobbyOverlay').classList.remove('hidden');
     renderDeckLobbyGrid();
     updateDeckLobbyFooter();
+    fitDeckLobbyGridHeight();
   }
   function openDeckPickerForStart(){
     deckPickerMode = 'start';
@@ -3009,6 +3009,7 @@
     document.getElementById('deckLobbyOverlay').classList.remove('hidden');
     renderDeckLobbyGrid();
     updateDeckLobbyFooter();
+    fitDeckLobbyGridHeight();
   }
   function openDeckPickerForSwitch(){
     deckPickerMode = 'switch';
@@ -3017,6 +3018,7 @@
     document.getElementById('deckLobbyOverlay').classList.remove('hidden');
     renderDeckLobbyGrid();
     updateDeckLobbyFooter();
+    fitDeckLobbyGridHeight();
   }
   function updateDeckLobbyFooter(){
     const isStart = deckPickerMode === 'start';

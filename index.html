@@ -375,7 +375,6 @@
       width: 100%;
       margin: 8px 0;
       text-align: center;
-      max-height: 540px;
       overflow-y: auto;
       padding-right: 4px;
     }
@@ -2473,8 +2472,9 @@
           html += `<button class="btn action-btn" id="submitAssocBtn2">📨 Отправить</button>`;
         } else {
           // Ведущий – теперь как у игрока по размеру (big-sub), но с градиентом
-          html = `<div class="announce">Придумайте ассоциацию (одно слово) и выберите карту</div>`;
-          html += `<div class="input-group" style="width:100%;"><input type="text" id="assocInput" class="input-big" placeholder="Ассоциация" value="${escapeHtml(G.associationInput)}"></div>`;
+          const isMode2Leader = G.gameMode === '2' && G.mode2SubMode === 'leader';
+          html = `<div class="announce">Придумайте ассоциацию и выберите карту</div>`;
+          html += `<div class="input-group" style="width:100%;"><input type="text" id="assocInput" class="input-big" placeholder="${isMode2Leader ? 'Одно слово' : 'Ассоциация'}" value="${escapeHtml(G.associationInput)}"></div>`;
           html += `<div class="card-grid">`;
           (active.cards || []).forEach((card, idx) => {
             const sel = G.selectedCardIndex === idx ? 'selected' : '';
@@ -2953,7 +2953,40 @@
         }
       });
     });
+
+    fitDeckLobbyGridHeight();
   }
+
+  // Высота плитки зависит от ширины экрана (картинка масштабируется по
+  // aspect-ratio), поэтому фиксированная высота в пикселях на разных
+  // устройствах даёт разное число видимых рядов. Вместо этого меряем
+  // реальную высоту плитки на этом конкретном экране и выставляем высоту
+  // сетки под ровно 3 ряда (9 плиток) — дальше прокрутка.
+  function fitDeckLobbyGridHeight(){
+    const grid = document.getElementById('deckLobbyGrid');
+    if (!grid) return;
+    const tiles = grid.querySelectorAll('.deck-tile');
+    if (tiles.length === 0){ grid.style.maxHeight = ''; return; }
+    if (tiles.length <= 9){ grid.style.maxHeight = ''; return; } // всё и так помещается, ограничение не нужно
+    // Меряем не "высоту одной плитки × 3" (ряды бывают разной высоты —
+    // например, если название колоды переносится на 2 строки, как у
+    // "Для друзей"), а фактическое положение низа 9-й плитки (последней
+    // в 3-м ряду) относительно сетки — это учитывает реальную высоту
+    // каждого из первых трёх рядов, какой бы она ни была.
+    const gridTop = grid.getBoundingClientRect().top;
+    const lastOfThirdRowBottom = tiles[8].getBoundingClientRect().bottom;
+    const height = lastOfThirdRowBottom - gridTop;
+    if (!height){
+      requestAnimationFrame(fitDeckLobbyGridHeight);
+      return;
+    }
+    grid.style.maxHeight = Math.ceil(height) + 'px';
+  }
+  window.addEventListener('resize', () => {
+    if (document.getElementById('deckLobbyOverlay') && !document.getElementById('deckLobbyOverlay').classList.contains('hidden')){
+      fitDeckLobbyGridHeight();
+    }
+  });
 
   let deckPickerMode = 'browse'; // 'browse' — обзор из лобби, 'start' — выбор перед стартом игры, 'switch' — смена набора при нехватке карт посреди игры
   let deckSwitchSnapshotIds = null; // выбор колод на момент открытия попапа смены — чтобы вернуть его при отмене
@@ -2963,24 +2996,27 @@
     document.getElementById('deckLobbyTitle').textContent = G.isRoomHost
       ? 'Выберите колоды для игры'
       : 'Колоды карт — можно полистать, пока ждём остальных';
+    // Сначала убираем hidden — иначе плитки рендерятся в display:none и
+    // JS не может измерить их реальную высоту (получит 0) для расчёта
+    // высоты сетки в fitDeckLobbyGridHeight().
+    document.getElementById('deckLobbyOverlay').classList.remove('hidden');
     renderDeckLobbyGrid();
     updateDeckLobbyFooter();
-    document.getElementById('deckLobbyOverlay').classList.remove('hidden');
   }
   function openDeckPickerForStart(){
     deckPickerMode = 'start';
     document.getElementById('deckLobbyTitle').textContent = 'Выберите колоды для игры';
+    document.getElementById('deckLobbyOverlay').classList.remove('hidden');
     renderDeckLobbyGrid();
     updateDeckLobbyFooter();
-    document.getElementById('deckLobbyOverlay').classList.remove('hidden');
   }
   function openDeckPickerForSwitch(){
     deckPickerMode = 'switch';
     deckSwitchSnapshotIds = (G.selectedDeckIds || []).slice();
     document.getElementById('deckLobbyTitle').textContent = 'Выберите колоды для продолжения';
+    document.getElementById('deckLobbyOverlay').classList.remove('hidden');
     renderDeckLobbyGrid();
     updateDeckLobbyFooter();
-    document.getElementById('deckLobbyOverlay').classList.remove('hidden');
   }
   function updateDeckLobbyFooter(){
     const isStart = deckPickerMode === 'start';
